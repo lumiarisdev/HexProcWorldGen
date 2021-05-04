@@ -28,6 +28,15 @@ namespace EconSim
 
         public Dictionary<CubeCoordinates, WorldTile> GenerateWorld() {
 
+            // seeding
+            if(args.UseStringSeed) {
+                args.WorldSeed = args.StringSeed.GetHashCode();
+            }
+            if(args.RandomizeSeed) {
+                args.WorldSeed = UnityEngine.Random.Range(0, 9999999);
+            }
+            UnityEngine.Random.InitState(args.WorldSeed);
+
             // create initial tiles
             var world = new Dictionary<CubeCoordinates, WorldTile>();
             for (int z = 0; z < args.SizeZ; z++) {
@@ -244,7 +253,7 @@ namespace EconSim
                                 // same plate type, directly colliding
                                 if (plate.Oceanic) {
                                     world[tile].Elevation += Mathf.Min(plate.DesiredElevation, plates[world[neighbor].PlateCoords].DesiredElevation);
-                                    world[tile].Elevation += (int)(Mathf.Abs(pressure) * 0.2f);
+                                    world[tile].Elevation += (int)(Mathf.Abs(pressure) * 0.15f);
                                 } else {
                                     world[tile].Elevation += Mathf.Max(plate.DesiredElevation, plates[world[neighbor].PlateCoords].DesiredElevation);
                                     world[tile].Elevation += (int)(Mathf.Abs(pressure) * 0.65f);

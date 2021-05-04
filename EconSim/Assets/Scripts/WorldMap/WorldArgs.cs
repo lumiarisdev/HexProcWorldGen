@@ -7,6 +7,12 @@ namespace EconSim
 {
     [Serializable]
     public class WorldArgs {
+
+        public int WorldSeed;
+        public string StringSeed;
+        public bool UseStringSeed;
+        public bool RandomizeSeed;
+
         public int SizeChunksX;
         public int SizeChunksZ;
 
