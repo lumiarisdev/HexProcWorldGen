@@ -116,25 +116,56 @@ namespace EconSim
             }
 
             // this is the supplimentary check
-            int supplimentCount = 0;
+            /*
+             * This needs to be more robust. Doing the supplimentary assignment based only off of distance creates
+             * edge cases where the closest plate origin is not the logical closest plate, because the plates
+             * origin is not close to the center.
+             * 
+             * In order to fix this, we should only assign to the closest plate if we're sure that its the
+             * correct one. So we should check our neighbors, and compare their plateCoords.
+             * 
+             * If they have no neighbors with plate coords, it is probably best to skip that tile and come back.
+             */
+            Queue<WorldTile> unassignedTiles = new Queue<WorldTile>();
             foreach (WorldTile tile in world.Values) {
-                if (tile.PlateCoords.Equals(new CubeCoordinates())) {
-                    var closestPlate = new CubeCoordinates();
-                    foreach (CubeCoordinates plate in plates.Keys) {
-                        if (closestPlate.Equals(new CubeCoordinates())) {
-                            closestPlate = plate;
-                        }
-                        if (CubeCoordinates.DistanceBetween(tile.Coordinates, plate) < CubeCoordinates.DistanceBetween(tile.Coordinates, closestPlate)) {
-                            closestPlate = plate;
-                        }
-                    }
-                    tile.PlateCoords = closestPlate;
-                    tile.Terrain = TerrainType.Debug2; // debug
-                    plates[closestPlate].Tiles.Add(tile.Coordinates);
-                    supplimentCount++;
+                if(tile.PlateCoords.Equals(new CubeCoordinates())) {
+                    unassignedTiles.Enqueue(tile);
                 }
             }
-            Debug.Log(supplimentCount + " / " + args.SizeX * args.SizeZ);
+            Debug.Log(unassignedTiles.Count + " / " + args.SizeX * args.SizeZ);
+            while (unassignedTiles.Count > 0) {
+                var tile = unassignedTiles.Dequeue();
+                var neighborsWithPlates = new List<WorldTile>();
+                for(HexDirection d = HexDirection.N; d <= HexDirection.NW; d++) {
+                    if(world.TryGetValue(tile.Coordinates.GetNeighbor(d), out WorldTile value) && !value.PlateCoords.Equals(new CubeCoordinates())) {
+                        neighborsWithPlates.Add(value);
+                    }
+                }
+                if(neighborsWithPlates.Count == 0) {
+                    unassignedTiles.Enqueue(tile);
+                    continue;
+                }
+                if(neighborsWithPlates.Count > 0) {
+                    var plateCounts = new Dictionary<CubeCoordinates, int>();
+                    foreach(WorldTile neighbor in neighborsWithPlates) {
+                        if(plateCounts.TryGetValue(neighbor.PlateCoords, out int value)) {
+                            plateCounts[neighbor.PlateCoords]++;
+                        } else {
+                            plateCounts.Add(neighbor.PlateCoords, 1);
+                        }
+                    }
+                    CubeCoordinates mostCommonPlate = new CubeCoordinates();
+                    plateCounts[mostCommonPlate] = 0;
+                    foreach(CubeCoordinates key in plateCounts.Keys) {
+                        if(plateCounts[key] > plateCounts[mostCommonPlate]) {
+                            mostCommonPlate = key;
+                        }
+                    }
+                    tile.PlateCoords = mostCommonPlate;
+                    plates[tile.PlateCoords].Tiles.Add(tile.Coordinates);
+                    world[tile.Coordinates].Terrain = TerrainType.Debug2;
+                } 
+            }
 
             // find plate boundaries
             /*
@@ -173,7 +204,7 @@ namespace EconSim
                     plate.DesiredElevation = UnityEngine.Random.Range(-15, -1);
                 }
                 else {
-                    plate.DesiredElevation = UnityEngine.Random.Range(0, 13);
+                    plate.DesiredElevation = UnityEngine.Random.Range(0, 9);
                 }
 
                 // plate motion
@@ -235,6 +266,11 @@ namespace EconSim
 
                     // calculate pressure
 
+                    // testing some changes here to fix some outlier cases and smooth elevations moer
+                    // mainly just preventing elevation from being added to by multiple interactions
+                    // a testing seed: 8603485
+                    // 5922675
+
                     foreach (CubeCoordinates neighbor in plateNeighbors) {
                         var pressure = 0;
                         var neighborVector = plates[world[neighbor].PlateCoords].Motion;
@@ -252,26 +288,26 @@ namespace EconSim
                             if (plate.Oceanic == plates[world[neighbor].PlateCoords].Oceanic) {
                                 // same plate type, directly colliding
                                 if (plate.Oceanic) {
-                                    world[tile].Elevation += Mathf.Min(plate.DesiredElevation, plates[world[neighbor].PlateCoords].DesiredElevation);
-                                    world[tile].Elevation += (int)(Mathf.Abs(pressure) * 0.15f);
+                                    world[tile].Elevation = Mathf.Max(plate.DesiredElevation, plates[world[neighbor].PlateCoords].DesiredElevation);
+                                    world[tile].Elevation += (int)(Mathf.Abs(pressure) * 0.25f);
                                 } else {
-                                    world[tile].Elevation += Mathf.Max(plate.DesiredElevation, plates[world[neighbor].PlateCoords].DesiredElevation);
+                                    world[tile].Elevation = Mathf.Max(plate.DesiredElevation, plates[world[neighbor].PlateCoords].DesiredElevation);
                                     world[tile].Elevation += (int)(Mathf.Abs(pressure) * 0.65f);
                                 }
                             }
                             else if (plate.Oceanic == true && plates[world[neighbor].PlateCoords].Oceanic == false) {
                                 // this is ocean, neighbor is land
-                                world[tile].Elevation += (int)Mathf.Lerp(plate.DesiredElevation, plates[world[neighbor].PlateCoords].DesiredElevation, 0.65f);
-                                world[tile].Elevation += (int)(pressure * 0.0625f);
+                                world[tile].Elevation = (int)Mathf.Lerp(plate.DesiredElevation, plates[world[neighbor].PlateCoords].DesiredElevation, 0.75f);
+                                world[tile].Elevation += (int)(Mathf.Abs(pressure) * 0.1f);
                             }
                             else if (plate.Oceanic == false && plates[world[neighbor].PlateCoords].Oceanic == true) {
                                 // this is land, neighbor is ocean
-                                world[tile].Elevation += (int)Mathf.Lerp(plate.DesiredElevation, plates[world[neighbor].PlateCoords].DesiredElevation, 0.15f);
+                                world[tile].Elevation = (int)Mathf.Lerp(plate.DesiredElevation, plates[world[neighbor].PlateCoords].DesiredElevation, 0.15f);
                                 world[tile].Elevation += (int)(Mathf.Abs(pressure) * 0.35f);
                             }
                         }
                         else if (pressure < 0 && world[tile].Elevation == 0) {
-                            world[tile].Elevation += (plate.DesiredElevation + plates[world[neighbor].PlateCoords].DesiredElevation) / 2;
+                            world[tile].Elevation = (plate.DesiredElevation + plates[world[neighbor].PlateCoords].DesiredElevation) / 2;
                             world[tile].Elevation += (int)(pressure * 0.02f);
                             if (plate.Oceanic && world[tile].Elevation > 2) {
                                 world[tile].Elevation = 2; // clamp oceanic plates to 2 elevation, just above water
@@ -399,19 +435,25 @@ namespace EconSim
                     if (tile.Elevation < 0) {
                         tile.Terrain = TerrainType.Ocean;
                     }
-                    else if (tile.Elevation > 17) {
+                    else if (tile.Elevation > 15) {
                         tile.Terrain = TerrainType.Mountain;
                     }
-                    else if (tile.Elevation > 12 && tile.Elevation <= 17) {
+                    else if (tile.Elevation > 10 && tile.Elevation <= 15) {
                         tile.Terrain = TerrainType.Hill;
                     }
-                    else if(tile.Elevation > 0 && tile.Elevation <= 12) {
+                    else if(tile.Elevation > 0 && tile.Elevation <= 10) {
                         tile.Terrain = TerrainType.Land;
                     } else {
                         tile.Terrain = TerrainType.Sand;
                     }
                 }
             }
+
+            //foreach(WorldPlate plate in plates.Values) {
+            //    foreach(CubeCoordinates tile in plate.BoundaryTiles) {
+            //        world[tile].Terrain = TerrainType.Debug;
+            //    }
+            //}
 
             /*
             * WEATHER
