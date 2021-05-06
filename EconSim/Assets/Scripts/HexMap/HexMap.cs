@@ -18,6 +18,8 @@ public class HexMap : MonoBehaviour {
         Color.red,
         Color.magenta,
         Color.HSVToRGB(291, 0.9f, 0.7f),
+        Color.cyan,
+        Color.white,
     };
 
     private int cellCountX;
@@ -94,7 +96,14 @@ public class HexMap : MonoBehaviour {
         HexMeshCell cell = hexMeshCells[cubeCoords] = Instantiate(hexMeshCellPrefab);
         cell.transform.localPosition = pos;
         cell.coordinates = cubeCoords;
-        cell.color = colors[(int)worldTile.Terrain];
+        //cell.color = colors[(int)worldTile.Terrain]; // terain coloring
+        // temperature coloring for debugging
+        if (worldMap.worldTiles[cubeCoords].Temperature == 30f) {
+            cell.color = colors[7];
+        }
+        else {
+            cell.color = Color.Lerp(Color.blue, Color.red, (worldMap.worldTiles[cubeCoords].Temperature - -40f) / (30f - -40f));
+        }
         cell.waterLevel = 0; // random water level, for testing lol
 
         Text label = Instantiate(cellLabelPrefab);

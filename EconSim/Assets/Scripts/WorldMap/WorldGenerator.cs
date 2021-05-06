@@ -462,7 +462,87 @@ namespace EconSim
             Dictionary<CubeCoordinates, float> temperatureMap = new Dictionary<CubeCoordinates, float>();
             Dictionary<CubeCoordinates, float> moistureMap = new Dictionary<CubeCoordinates, float>();
 
-            
+            // cool seed: 8437681
+
+            /*
+             * Determine which tiles fall along the equator. 
+             * 
+             * To do this, we are going to select all tiles that can be reached via a (+2, -1, -1) or (-2, +1, +1)
+             * permutation from (0, 0, 0). Then, we will select their neighbors in the NW, SW, NE, SE directions.
+             */
+            var equator = new List<CubeCoordinates>();
+            var current = new CubeCoordinates(0, 0, 0);
+            current = current + CubeCoordinates.Scale(CubeCoordinates.Permutations[0], args.SizeZ/2);
+            Debug.Log(world.TryGetValue(current, out WorldTile _));
+            while(world.TryGetValue(current, out WorldTile _)) {
+                equator.Add(current);
+                temperatureMap[current] = world[current].Temperature = 30f;
+                if (world.TryGetValue(current.GetNeighbor(HexDirection.NE), out WorldTile _)) {
+                    temperatureMap[current.GetNeighbor(HexDirection.NE)] = world[current.GetNeighbor(HexDirection.NE)].Temperature = 30f;
+                    equator.Add(current.GetNeighbor(HexDirection.NE));
+                }
+                if (world.TryGetValue(current.GetNeighbor(HexDirection.SE), out WorldTile _)) {
+                    temperatureMap[current.GetNeighbor(HexDirection.SE)] = world[current.GetNeighbor(HexDirection.SE)].Temperature = 30f;
+                    equator.Add(current.GetNeighbor(HexDirection.SE));
+                }
+                current.x += 2;
+                current.y--;
+                current.z--;
+            }
+
+            //foreach(CubeCoordinates tile in equator) {
+            //    world[tile].Terrain = TerrainType.Debug3;
+            //}
+
+            foreach(CubeCoordinates tile in world.Keys) {
+                if(!temperatureMap.TryGetValue(tile, out float _)) {
+                    var closestEqTile = equator[0];
+                    foreach(CubeCoordinates eq in equator) {
+                        if(CubeCoordinates.DistanceBetween(tile, closestEqTile) > CubeCoordinates.DistanceBetween(tile, eq)) {
+                            closestEqTile = eq;
+                        }
+                    }
+                    if(CubeCoordinates.DistanceBetween(tile, closestEqTile) < 3) {
+                        temperatureMap[tile] = 30f;
+                    } else {
+                        temperatureMap[tile] = Mathf.SmoothStep(-40f, 30f, Mathf.Pow(0.99f, CubeCoordinates.DistanceBetween(tile, closestEqTile)));
+                    }
+                    world[tile].Temperature = temperatureMap[tile];
+                }
+            }
+
+            // a seed: 8319346
+            foreach (CubeCoordinates tile in temperatureMap.Keys) {
+                var el = world[tile].Elevation;
+                // elevation should be able to drop the temp by about -20 to -40 degrees
+                // so, as el gets closer to maxEl, we drop the temperature further, on some kind of exponential curve
+                if(el > 9) {
+                    var tempChange = Mathf.Lerp(-40f, 0f, Mathf.Pow(0.96f, el - 9));
+                    world[tile].Temperature = world[tile].Temperature + tempChange;
+                } else if (el < -9) {
+                    var tempChange = Mathf.Lerp(-10f, 0f, Mathf.Pow(0.95f, Mathf.Abs(el)));
+                    world[tile].Temperature = world[tile].Temperature + tempChange;
+                }
+            }
+
+            // for temperature visuals. should remove later
+            //foreach (WorldTile tile in world.Values) {
+            //    if (temperatureMap[tile.Coordinates] >= 28.0f) {
+            //        tile.Terrain = TerrainType.Debug3;
+            //    } else if (temperatureMap[tile.Coordinates] >= 15.0f) {
+            //        tile.Terrain = TerrainType.Debug;
+            //    } else if (temperatureMap[tile.Coordinates] >= 7.5f) {
+            //        tile.Terrain = TerrainType.Sand;
+            //    } else if (temperatureMap[tile.Coordinates] >= -2.5f) {
+            //        tile.Terrain = TerrainType.Debug4;
+            //    } else if (temperatureMap[tile.Coordinates] >= -20.0f) {
+            //        tile.Terrain = TerrainType.Ocean;
+            //    } else if (temperatureMap[tile.Coordinates] >= - 30.0f) {
+            //        tile.Terrain = TerrainType.Debug2;
+            //    } else {
+            //        tile.Terrain = TerrainType.Debug5;
+            //    }
+            //}
 
             return world;
 

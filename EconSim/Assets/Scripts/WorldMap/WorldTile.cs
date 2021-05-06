@@ -14,7 +14,9 @@ namespace EconSim {
         Sand,
         Debug,
         Debug2,
-        Debug3
+        Debug3,
+        Debug4,
+        Debug5
     }
 
     public class WorldTile {
@@ -22,8 +24,8 @@ namespace EconSim {
         public CubeCoordinates Coordinates;
 
         public int Elevation;
-        // public float Temperature;
-        // public float Precipitation;
+        public float Temperature;
+        public float Precipitation;
         public CubeCoordinates PlateCoords;
 
         // public float Fertility;

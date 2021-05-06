@@ -382,10 +382,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   generatorArgs:
-    WorldSeed: 8603485
+    WorldSeed: 8319346
     StringSeed: 
     UseStringSeed: 0
-    RandomizeSeed: 0
+    RandomizeSeed: 1
     SizeChunksX: 70
     SizeChunksZ: 50
     OceanFrequency: 0.6
