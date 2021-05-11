@@ -31,7 +31,9 @@ namespace EconSim
         public float OceanFrequency;
 
         public int NumPlates;
+        [Range(0, 1)]
         public float PlateMotionScaleFactor;
+        [Range(0, 1)]
         public float UpliftDecay;
 
     }

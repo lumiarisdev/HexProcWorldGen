@@ -132,7 +132,7 @@ namespace EconSim
                     unassignedTiles.Enqueue(tile);
                 }
             }
-            Debug.Log(unassignedTiles.Count + " / " + args.SizeX * args.SizeZ);
+            //Debug.Log(unassignedTiles.Count + " / " + args.SizeX * args.SizeZ);
             while (unassignedTiles.Count > 0) {
                 var tile = unassignedTiles.Dequeue();
                 var neighborsWithPlates = new List<WorldTile>();
@@ -473,7 +473,7 @@ namespace EconSim
             var equator = new List<CubeCoordinates>();
             var current = new CubeCoordinates(0, 0, 0);
             current = current + CubeCoordinates.Scale(CubeCoordinates.Permutations[0], args.SizeZ/2);
-            Debug.Log(world.TryGetValue(current, out WorldTile _));
+            //Debug.Log(world.TryGetValue(current, out WorldTile _));
             while(world.TryGetValue(current, out WorldTile _)) {
                 equator.Add(current);
                 temperatureMap[current] = world[current].Temperature = 30f;
@@ -493,6 +493,10 @@ namespace EconSim
             //foreach(CubeCoordinates tile in equator) {
             //    world[tile].Terrain = TerrainType.Debug3;
             //}
+
+            /*
+             * 
+             */
 
             foreach(CubeCoordinates tile in world.Keys) {
                 if(!temperatureMap.TryGetValue(tile, out float _)) {
@@ -524,6 +528,14 @@ namespace EconSim
                     world[tile].Temperature = world[tile].Temperature + tempChange;
                 }
             }
+
+            /*
+             * It's wind time, this should be fun
+             * 
+             * First we need to divide the world into the appropriate air circulation cells
+             * just like on earth. So we need to divide the world into 6 even sections.
+             * We can most 
+             */
 
             // for temperature visuals. should remove later
             //foreach (WorldTile tile in world.Values) {

@@ -127,7 +127,7 @@ namespace EconSim {
 
         public static Vector3Int CubeToOffset(CubeCoordinates coords) {
             var col = coords.x;
-            var row = coords.z + (coords.x + (coords.x & 1)) / 2;
+            var row = coords.z + (coords.x - (coords.x & 1)) / 2;
             return new Vector3Int(col, 0, row);
         }
 

@@ -53,7 +53,7 @@ public class HexMeshCell : MonoBehaviour
     }
 
     // we need to call this to update the cells, at some point, lol
-    private void Refresh() {
+    public void Refresh() {
         if(chunk) {
             chunk.Refresh();
             for(int i = 0; i < 5; i++) {

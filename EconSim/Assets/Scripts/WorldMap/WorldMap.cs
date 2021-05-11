@@ -7,6 +7,8 @@ namespace EconSim {
 
     public class WorldMap : MonoBehaviour {
 
+        public HexMap hexMap;
+
         public WorldArgs generatorArgs;
         public bool DebugMode;
 
@@ -18,6 +20,8 @@ namespace EconSim {
             gen.debug = DebugMode;
 
             worldTiles = gen.GenerateWorld();
+
+            hexMap = GetComponent<HexMap>();
 
 
         }
@@ -31,6 +35,15 @@ namespace EconSim {
 
         // Update is called once per frame
         void Update() {
+
+            if (Input.GetKey(KeyCode.G)) {
+                Debug.Log("Generating new world...");
+                worldTiles = WorldGenerator.GenerateWorld(generatorArgs);
+                Debug.Log(Time.deltaTime);
+                Debug.Log("Refreshing HexMap...");
+                hexMap.Refresh();
+                Debug.Log(Time.deltaTime);
+            }
 
         }
 

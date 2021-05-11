@@ -80,6 +80,12 @@ public class HexMapChunk : MonoBehaviour
         }
     }
 
+    /*
+     * Triangulates a single cell and its connections to its neighbors
+     * NOTE:
+     * Each cell is composed of an inner hexagon, and a ring of quads/triangles that make up the outer hexagon,
+     * as well as connect the cell to its neighbors.
+     */
     private void Triangulate(HexMeshCell cell) {
         for (HexDirection d = HexDirection.N; d <= HexDirection.NW; d++) {
             Triangulate(d, cell);
@@ -87,10 +93,7 @@ public class HexMapChunk : MonoBehaviour
     }
 
     /*
-     * Triangulates a single cell and its connections to its neighbors
-     * NOTE:
-     * Each cell is composed of an inner hexagon, and a ring of quads/triangles that make up the outer hexagon,
-     * as well as connect the cell to its neighbors.
+     * Triangulates the main area of the hexagon and calls the remaining triangulate functions.
      */
     private void Triangulate(HexDirection dir, HexMeshCell cell) {
         Vector3 origin = cell.transform.localPosition; // could be cell.origin, refactor later ???
