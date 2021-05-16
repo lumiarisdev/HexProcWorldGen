@@ -8,7 +8,7 @@ public class HexMapChunk : MonoBehaviour
 {
     public Text cellLabelPrefab;
     Canvas canvas;
-    public HexMesh terrainMesh, waterMesh;
+    public HexMesh terrainMesh, waterMesh, shoreMesh;
     Dictionary<CubeCoordinates, HexMeshCell> cells;
 
     public Color color;
@@ -70,6 +70,7 @@ public class HexMapChunk : MonoBehaviour
         terrainMesh.Clear();
         if(drawWater) {
             waterMesh.Clear();
+            shoreMesh.Clear();
         }
         foreach (HexMeshCell cell in cells.Values) {
             Triangulate(cell);
@@ -77,6 +78,7 @@ public class HexMapChunk : MonoBehaviour
         terrainMesh.Apply();
         if(drawWater) {
             waterMesh.Apply();
+            shoreMesh.Apply();
         }
     }
 
@@ -379,16 +381,26 @@ public class HexMapChunk : MonoBehaviour
      */
     private void TriangulateWater(HexDirection dir, HexMeshCell cell, Vector3 origin) {
         origin.y = cell.WaterSurfaceY;
+
+        HexMeshCell neighbor = HexMap.MeshCellLookup(cell.coordinates.GetNeighbor(dir));
+        if(neighbor != null && !neighbor.IsUnderwater) {
+            TriangulateWaterShore(dir, cell, neighbor, origin);
+        } else {
+            TriangulateOpenWater(dir, cell, neighbor, origin);
+        }
+
+    }
+
+    /*
+     * Triangulate the open water area
+     */
+    private void TriangulateOpenWater(HexDirection dir, HexMeshCell cell, HexMeshCell neighbor, Vector3 origin) {
         Vector3 c1 = HexMetrics.GetInnerCorner(origin, (int)dir);
         Vector3 c2 = HexMetrics.GetInnerCorner(origin, (int)dir + 1);
 
         waterMesh.AddTrianglePerturbed(origin, c1, c2);
 
-        if(dir <= HexDirection.SE) {
-            HexMeshCell neighbor = HexMap.MeshCellLookup(cell.coordinates.GetNeighbor(dir));
-            if (neighbor == null || !neighbor.IsUnderwater) {
-                return;
-            }
+        if (dir <= HexDirection.SE && neighbor != null) {
 
             Vector3 bridgeOffset = HexMetrics.GetBridgeOffset(origin, dir);
             Vector3 e1 = c1 + bridgeOffset;
@@ -396,14 +408,46 @@ public class HexMapChunk : MonoBehaviour
 
             waterMesh.AddQuadPerturbed(c1, c2, e1, e2);
 
-            if(dir <= HexDirection.S) {
+            if (dir < HexDirection.SE) {
                 HexMeshCell nextNeighbor = HexMap.MeshCellLookup(cell.coordinates.GetNeighbor(dir.Next()));
-                if(nextNeighbor == null || !nextNeighbor.IsUnderwater) {
+                if (nextNeighbor == null || !nextNeighbor.IsUnderwater) {
                     return;
                 }
-                waterMesh.AddTrianglePerturbed(c2, e2, c2 + HexMetrics.GetBridgeOffset(origin, dir));
+                waterMesh.AddTrianglePerturbed(c2, e2, c2 + HexMetrics.GetBridgeOffset(origin, dir.Next()));
             }
         }
+    }
+
+    /*
+     * Triangulate the water by the shoreline
+     */
+    private void TriangulateWaterShore(HexDirection dir, HexMeshCell cell, HexMeshCell neighbor, Vector3 origin) {
+        // triangle fan for triangles bordering land
+        EdgeVertices e1 = new EdgeVertices(
+            HexMetrics.GetInnerCorner(origin, (int)dir),
+            HexMetrics.GetInnerCorner(origin, (int)dir + 1));
+        waterMesh.AddTrianglePerturbed(origin, e1.v1, e1.v2);
+        waterMesh.AddTrianglePerturbed(origin, e1.v2, e1.v3);
+        waterMesh.AddTrianglePerturbed(origin, e1.v3, e1.v4);
+
+        Vector3 bridgeOffset = HexMetrics.GetBridgeOffset(origin, dir);
+        EdgeVertices e2 = new EdgeVertices(e1.v1 + bridgeOffset, e1.v4 + bridgeOffset);
+        shoreMesh.AddQuadPerturbed(e1.v1, e1.v2, e2.v1, e2.v2);
+        shoreMesh.AddQuadPerturbed(e1.v2, e1.v3, e2.v2, e2.v3);
+        shoreMesh.AddQuadPerturbed(e1.v3, e1.v4, e2.v3, e2.v4);
+        shoreMesh.AddQuadUV(0f, 0f, 0f, 1f);
+        shoreMesh.AddQuadUV(0f, 0f, 0f, 1f);
+        shoreMesh.AddQuadUV(0f, 0f, 0f, 1f);
+
+        HexMeshCell nextNeighbor = HexMap.MeshCellLookup(cell.GetNeighbor(dir.Next()));
+        if(nextNeighbor != null) {
+            shoreMesh.AddTrianglePerturbed(e1.v4, e2.v4, e1.v4 + HexMetrics.GetBridgeOffset(origin, dir.Next()));
+            shoreMesh.AddTriangleUV(
+                new Vector2(0f, 0f),
+                new Vector2(0f, 1f),
+                new Vector2(0f, nextNeighbor.IsUnderwater ? 0f : 1f));
+        }
+
     }
 
 }

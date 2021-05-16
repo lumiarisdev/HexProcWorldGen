@@ -26,7 +26,7 @@ public class HexMap : MonoBehaviour {
 
     public static Color[] colors = {
         Color.blue,
-        Color.HSVToRGB((145f/360f), 0.77f, 0.80f),
+        Color.HSVToRGB((107f/360f), 0.66f, 0.62f),
         Color.grey,
         Color.HSVToRGB((30f/360f), 1f, 0.59f),
         Color.HSVToRGB((56f/360f), 0.89f, 0.96f),
@@ -44,10 +44,12 @@ public class HexMap : MonoBehaviour {
 
     List<HexMapChunk> chunks;
 
-    Dictionary<CubeCoordinates, HexMeshCell> hexMeshCells = new Dictionary<CubeCoordinates, HexMeshCell>();
+    static Dictionary<CubeCoordinates, HexMeshCell> hexMeshCells = new Dictionary<CubeCoordinates, HexMeshCell>();
     WorldMap worldMap;
 
     public Texture2D noiseSource; // source for our vertex perturbation noise
+
+    private IEnumerator currentCoroutine;
 
     private void Awake() {
 
@@ -67,7 +69,7 @@ public class HexMap : MonoBehaviour {
 
     private void Start() {
         CreateChunks();
-        CreateCells(worldMap.worldTiles);
+        CreateCells(worldMap.worldData);
     }
 
     // Update is called once per frame
@@ -83,7 +85,7 @@ public class HexMap : MonoBehaviour {
             //Ray inputRay = Camera.main.ScreenPointToRay(Input.mousePosition);
             //RaycastHit hit;
             //if(Physics.Raycast(inputRay, out hit)) {
-                
+
             //}
             //var mPos = Input.mousePosition;
             //mPos.x /= (2f * HexMetrics.outerRadius * 0.75f);
@@ -97,23 +99,34 @@ public class HexMap : MonoBehaviour {
             //    UpdateCell(mCubePos);
             //}
 
+
+            Refresh();
+
         }
 
     }
 
     /*
      * Refresh the entire map
+     * 
+     * Testing this as a coroutine to make the experience a little smoother
+     * 
      */
     public void Refresh() {
         if (chunks.Count < worldMap.generatorArgs.SizeChunksX * worldMap.generatorArgs.SizeChunksZ) {
+            // BUG: need to delete old chunks
+            // attempted fix
+            foreach (HexMapChunk chunk in chunks) {
+                Destroy(chunk);
+            }
             CreateChunks();
         }
-        foreach (WorldTile tile in worldMap.worldTiles.Values) {
+        foreach (WorldTile tile in worldMap.worldData.WorldDict.Values) {
             if (MeshCellLookup(tile.Coordinates) != null) {
-                UpdateCell(tile.Coordinates);
+                UpdateCell(worldMap.worldData, tile);
             }
             else {
-                hexMeshCells[tile.Coordinates] = CreateCell(tile);
+                hexMeshCells[tile.Coordinates] = CreateCell(worldMap.worldData, tile);
 
                 var x = tile.Coordinates.ToOffset().x;
                 var z = tile.Coordinates.ToOffset().z;
@@ -127,43 +140,60 @@ public class HexMap : MonoBehaviour {
     /*
      * Update a cell based on the current state of its sister tile.
      */
-    public void UpdateCell(CubeCoordinates c) {
+    public void UpdateCell(WorldMapData wData, WorldTile tile) {
         if (debugMode == DebugMode.None) {
             // normal terrain
-            hexMeshCells[c].color = colors[(int)worldMap.worldTiles[c].Terrain];
+            hexMeshCells[tile.Coordinates].color = colors[(int)tile.Terrain];
         }
-        else if (debugMode == DebugMode.Temperature) {
-            if (worldMap.worldTiles[c].Temperature == 30f) {
-                hexMeshCells[c].color = colors[7];
+        else if (debugMode == DebugMode.Tectonics) {
+            if (tile.PlateCoords.Equals(tile.Coordinates)) {
+                hexMeshCells[tile.Coordinates].color = colors[6];
             }
             else {
-                hexMeshCells[c].color = Color.Lerp(Color.blue, Color.red, (worldMap.worldTiles[c].Temperature - -40f) / (30f - -40f));
+                foreach (WorldPlate plate in wData.PlateDict.Values) {
+                    foreach (CubeCoordinates c in plate.BoundaryTiles) {
+                        if (c.Equals(tile.Coordinates)) {
+                            hexMeshCells[tile.Coordinates].color = colors[7];
+                            goto BFOUND;
+                        }
+                    }
+                }
+                hexMeshCells[tile.Coordinates].color = colors[5];
+            }
+        BFOUND:;
+        }
+        else if (debugMode == DebugMode.Temperature) {
+            if (worldMap.worldData.WorldDict[tile.Coordinates].Temperature == 30f) {
+                hexMeshCells[tile.Coordinates].color = colors[7];
+            }
+            else {
+                hexMeshCells[tile.Coordinates].color = Color.Lerp(Color.blue, Color.red, (worldMap.worldData.WorldDict[tile.Coordinates].Temperature - -40f) / (30f - -40f));
             }
         }
 
-        Vector3Int offset = c.ToOffset();
+        Vector3Int offset = tile.Coordinates.ToOffset();
         var width = 2f * HexMetrics.outerRadius;
         var height = Mathf.Sqrt(3) * HexMetrics.outerRadius;
         Vector3 pos = new Vector3(
             offset.x * (width * 0.75f),
-            worldMap.worldTiles[c].Elevation * HexMetrics.elevationStep,
+            worldMap.worldData.WorldDict[tile.Coordinates].Elevation * HexMetrics.elevationStep,
             (offset.z + (offset.x * 0.5f) - (offset.x / 2)) * (height));
 
-        hexMeshCells[c].transform.localPosition = pos;
+        hexMeshCells[tile.Coordinates].transform.localPosition = pos;
 
         // LABELS WILL NOT UPDATE
         // TODO: ADD LABEL UPDATES
 
-        hexMeshCells[c].Refresh();
+        hexMeshCells[tile.Coordinates].Refresh();
     }
 
     /*
      * Create the grid of hex mesh cells from a WorldTile dictionary.
      * Should only be run after CreateChunks()
      */
-    public void CreateCells(Dictionary<CubeCoordinates, WorldTile> worldDict) {
-        foreach(WorldTile tile in worldDict.Values) {
-            hexMeshCells[tile.Coordinates] = CreateCell(tile);
+    public void CreateCells(WorldMapData wData) {
+        foreach(WorldTile tile in wData.WorldDict.Values) {
+            hexMeshCells[tile.Coordinates] = CreateCell(wData, tile);
             AddCellToChunk(tile.Coordinates.ToOffset().x, tile.Coordinates.ToOffset().z, hexMeshCells[tile.Coordinates]);
         }
     }
@@ -171,7 +201,7 @@ public class HexMap : MonoBehaviour {
     /*
      * Create a HexMeshTile from an input WorldTile and offset hex coordinates.
      */
-    public HexMeshCell CreateCell(WorldTile wTile) {
+    public HexMeshCell CreateCell(WorldMapData wData, WorldTile wTile) {
         Vector3Int offset = wTile.Coordinates.ToOffset(); // when this is a Vector3, there are a lot of problems. TODO: investigate
         var width = 2f * HexMetrics.outerRadius;
         var height = Mathf.Sqrt(3) * HexMetrics.outerRadius;
@@ -179,6 +209,7 @@ public class HexMap : MonoBehaviour {
             offset.x * (width * 0.75f),
             wTile.Elevation * HexMetrics.elevationStep,
             (offset.z + (offset.x * 0.5f) - (offset.x / 2)) * (height));
+        pos.y = pos.y + (HexMetrics.SampleNoise(pos).y * 2f - 1f);
 
         // TODO: elevation perturbation, could also be achieved elsewhere
         //pos.y += (HexMetrics.SampleNoise(pos).y * 2f - 1f) * HexMetrics.elevationPerturbStrength;
@@ -188,10 +219,27 @@ public class HexMap : MonoBehaviour {
         cell.coordinates = wTile.Coordinates;
 
         // initial coloring, based on debug modes and worldtile attributes
-        if(debugMode == DebugMode.None) {
+        if (debugMode == DebugMode.None) {
             // normal terrain
             cell.color = colors[(int)wTile.Terrain];
-        } else if(debugMode == DebugMode.Temperature) {
+        }
+        else if (debugMode == DebugMode.Tectonics) {
+            if(wTile.PlateCoords.Equals(wTile.Coordinates)) {
+                cell.color = colors[6];
+            } else {
+                foreach (WorldPlate plate in wData.PlateDict.Values) {
+                    foreach (CubeCoordinates c in plate.BoundaryTiles) {
+                        if (c.Equals(wTile.Coordinates)) {
+                            cell.color = colors[7];
+                            goto BFOUND;
+                        }
+                    }
+                }
+                cell.color = colors[5];
+            }
+        BFOUND:;
+        }
+        else if(debugMode == DebugMode.Temperature) {
             if (wTile.Temperature == 30f) {
                 cell.color = colors[7];
             }
@@ -244,7 +292,7 @@ public class HexMap : MonoBehaviour {
     }
 
     public static HexMeshCell MeshCellLookup(CubeCoordinates c) {
-        var exists = Instance.hexMeshCells.TryGetValue(c, out HexMeshCell cell);
+        var exists = hexMeshCells.TryGetValue(c, out HexMeshCell cell);
         return exists ? cell : null;
     }
 

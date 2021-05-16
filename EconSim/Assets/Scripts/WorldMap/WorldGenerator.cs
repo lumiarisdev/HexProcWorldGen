@@ -10,23 +10,18 @@ namespace EconSim
     {
 
         private WorldArgs args;
-        public bool debug;
-
-        public WorldGenerator(WorldArgs _args, bool _debug) {
-            args = _args;
-            debug = _debug;
-        }
 
         public WorldGenerator(WorldArgs _args) {
             args = _args;
-            debug = false;
         }
 
-        public static Dictionary<CubeCoordinates, WorldTile> GenerateWorld(WorldArgs _args) {
+        public static WorldMapData GenerateWorld(WorldArgs _args) {
             return new WorldGenerator(_args).GenerateWorld();
         }
 
-        public Dictionary<CubeCoordinates, WorldTile> GenerateWorld() {
+        public WorldMapData GenerateWorld() {
+
+            var wData = new WorldMapData();
 
             // seeding
             if(args.UseStringSeed) {
@@ -38,14 +33,14 @@ namespace EconSim
             UnityEngine.Random.InitState(args.WorldSeed);
 
             // create initial tiles
-            var world = new Dictionary<CubeCoordinates, WorldTile>();
             for (int z = 0; z < args.SizeZ; z++) {
                 for (int x = 0; x < args.SizeX; x++) {
                     var coords = CubeCoordinates.OffsetToCube(new Vector3(x, 0, z));
-                    world[coords] = new WorldTile {
+                    wData.WorldDict[coords] = new WorldTile {
                         Coordinates = coords,
                         PlateCoords = new CubeCoordinates(), // default this, so that we can detect it later on ??
-                        Terrain = TerrainType.None
+                        Terrain = TerrainType.None,
+                        Elevation = -100
                     };
                 }
             }
@@ -55,18 +50,17 @@ namespace EconSim
              */
 
             // generate points for tectonic plate origins
-            Dictionary<CubeCoordinates, WorldPlate> plates = new Dictionary<CubeCoordinates, WorldPlate>();
             for (int i = 0; i < args.NumPlates; i++) {
                 int randX = UnityEngine.Random.Range(0, args.SizeX);
                 int randZ = UnityEngine.Random.Range(0, args.SizeZ);
                 var _origin = CubeCoordinates.OffsetToCube(new Vector3(randX, 0f, randZ));
                 // ensure that the point we pick has not yet been assigned to a plate
-                while(!world[_origin].PlateCoords.Equals(new CubeCoordinates())) {
+                while(!wData.WorldDict[_origin].PlateCoords.Equals(new CubeCoordinates())) {
                     randX = UnityEngine.Random.Range(0, args.SizeX);
                     randZ = UnityEngine.Random.Range(0, args.SizeZ);
                     _origin = CubeCoordinates.OffsetToCube(new Vector3(randX, 0f, randZ));
                 }
-                plates[_origin] = new WorldPlate {
+                wData.PlateDict[_origin] = new WorldPlate {
                     Origin = _origin,
                     Tiles = new List<CubeCoordinates>(),
                     BoundaryTiles = new List<CubeCoordinates>(),
@@ -86,23 +80,23 @@ namespace EconSim
                 Deque<CubeCoordinates> ffDeq = new Deque<CubeCoordinates>();
                 Dictionary<CubeCoordinates, bool> visited = new Dictionary<CubeCoordinates, bool>();
                 var chance = 100f;
-                var decay = 0.9996f;
+                var decay = args.PlateSpreadDecay;
                 ffDeq.AddToBack(_origin);
                 visited[_origin] = true;
                 while (ffDeq.Count > 0) {
                     var coords = ffDeq.RemoveFromFront();
-                    if (world[coords].PlateCoords.Equals(new CubeCoordinates())) {
-                        world[coords].PlateCoords = _origin;
-                        plates[_origin].Tiles.Add(coords);
+                    if (wData.WorldDict[coords].PlateCoords.Equals(new CubeCoordinates())) {
+                        wData.WorldDict[coords].PlateCoords = _origin;
+                        wData.PlateDict[_origin].Tiles.Add(coords);
                         plateSize++;
-                        world[coords].Terrain = TerrainType.Debug; // debug
+                        wData.WorldDict[coords].Terrain = TerrainType.Debug; // debug
                         //if(plateSize >= maxPlateSize) {
                         //    break;
                         //}
                         if (chance >= UnityEngine.Random.Range(0f, 100f)) {
                             for (HexDirection d = HexDirection.N; d <= HexDirection.NW; d++) {
                                 if (!visited.TryGetValue(coords.GetNeighbor(d), out bool _)) {
-                                    if (world.TryGetValue(coords.GetNeighbor(d), out WorldTile _)) {
+                                    if (wData.WorldDict.TryGetValue(coords.GetNeighbor(d), out WorldTile _)) {
                                         ffDeq.AddToBack(coords.GetNeighbor(d));
                                         visited[coords.GetNeighbor(d)] = true;
                                     }
@@ -127,17 +121,17 @@ namespace EconSim
              * If they have no neighbors with plate coords, it is probably best to skip that tile and come back.
              */
             Queue<WorldTile> unassignedTiles = new Queue<WorldTile>();
-            foreach (WorldTile tile in world.Values) {
+            foreach (WorldTile tile in wData.WorldDict.Values) {
                 if(tile.PlateCoords.Equals(new CubeCoordinates())) {
                     unassignedTiles.Enqueue(tile);
                 }
             }
-            //Debug.Log(unassignedTiles.Count + " / " + args.SizeX * args.SizeZ);
+            Debug.Log(unassignedTiles.Count + " / " + args.SizeX * args.SizeZ);
             while (unassignedTiles.Count > 0) {
                 var tile = unassignedTiles.Dequeue();
                 var neighborsWithPlates = new List<WorldTile>();
                 for(HexDirection d = HexDirection.N; d <= HexDirection.NW; d++) {
-                    if(world.TryGetValue(tile.Coordinates.GetNeighbor(d), out WorldTile value) && !value.PlateCoords.Equals(new CubeCoordinates())) {
+                    if(wData.WorldDict.TryGetValue(tile.Coordinates.GetNeighbor(d), out WorldTile value) && !value.PlateCoords.Equals(new CubeCoordinates())) {
                         neighborsWithPlates.Add(value);
                     }
                 }
@@ -162,8 +156,7 @@ namespace EconSim
                         }
                     }
                     tile.PlateCoords = mostCommonPlate;
-                    plates[tile.PlateCoords].Tiles.Add(tile.Coordinates);
-                    world[tile.Coordinates].Terrain = TerrainType.Debug2;
+                    wData.PlateDict[tile.PlateCoords].Tiles.Add(tile.Coordinates);
                 } 
             }
 
@@ -181,13 +174,13 @@ namespace EconSim
              * 
              * TESTED: it works
              */
-            foreach (WorldPlate plate in plates.Values) {
+            foreach (WorldPlate plate in wData.PlateDict.Values) {
                 foreach (CubeCoordinates tile in plate.Tiles) {
                     for (HexDirection i = 0; i <= HexDirection.NW; i++) {
-                        if (world.TryGetValue(tile.GetNeighbor(i), out WorldTile value)) {
-                            if (!world[tile].PlateCoords.Equals(value.PlateCoords)) {
+                        if (wData.WorldDict.TryGetValue(tile.GetNeighbor(i), out WorldTile value)) {
+                            if (!wData.WorldDict[tile].PlateCoords.Equals(value.PlateCoords)) {
                                 plate.BoundaryTiles.Add(tile);
-                                world[tile].Terrain = TerrainType.Debug3; // debug
+                                wData.WorldDict[tile].Terrain = TerrainType.Debug3; // debug
                                 break;
                             }
                         }
@@ -197,14 +190,14 @@ namespace EconSim
 
             // generate random desired elevations for plates
             // also generate plate motion
-            foreach (WorldPlate plate in plates.Values) {
+            foreach (WorldPlate plate in wData.PlateDict.Values) {
 
                 // desired elevation
                 if (plate.Oceanic) {
-                    plate.DesiredElevation = UnityEngine.Random.Range(-15, -1);
+                    plate.DesiredElevation = UnityEngine.Random.Range(-45, -1);
                 }
                 else {
-                    plate.DesiredElevation = UnityEngine.Random.Range(0, 9);
+                    plate.DesiredElevation = UnityEngine.Random.Range(4, 40);
                 }
 
                 // plate motion
@@ -225,13 +218,8 @@ namespace EconSim
 
                 // for testing
                 // this is how im drawing gizmos for plates, temporarily, remove later
-                world[plate.Origin].MotionVector = new Tuple<CubeCoordinates, CubeCoordinates>(plate.Origin, CubeCoordinates.Lerp(plate.Origin, plate.DriftAxis, args.PlateMotionScaleFactor));
+                wData.WorldDict[plate.Origin].MotionVector = new Tuple<CubeCoordinates, CubeCoordinates>(plate.Origin, CubeCoordinates.Lerp(plate.Origin, plate.DriftAxis, args.PlateMotionScaleFactor));
 
-            }
-
-            // set elevations to bogus number
-            foreach (WorldTile tile in world.Values) {
-                tile.Elevation = -100;
             }
 
             // calculate elevations for boundary tiles based on plate motions
@@ -249,15 +237,15 @@ namespace EconSim
              * to avoid calculating the same tiles over again anyways, so for now, I will just do it one by one.
              * 
              */
-            foreach (WorldPlate plate in plates.Values) {
+            foreach (WorldPlate plate in wData.PlateDict.Values) {
 
                 foreach (CubeCoordinates tile in plate.BoundaryTiles) {
                     // zero out elevation
-                    world[tile].Elevation = 0;
+                    wData.WorldDict[tile].Elevation = 0;
 
                     List<CubeCoordinates> plateNeighbors = new List<CubeCoordinates>();
                     for (HexDirection i = HexDirection.N; i <= HexDirection.NW; i++) {
-                        if (world.TryGetValue(tile.GetNeighbor(i), out WorldTile value)) {
+                        if (wData.WorldDict.TryGetValue(tile.GetNeighbor(i), out WorldTile value)) {
                             if (!value.PlateCoords.Equals(plate.Origin)) {
                                 plateNeighbors.Add(tile.GetNeighbor(i));
                             }
@@ -273,84 +261,83 @@ namespace EconSim
 
                     foreach (CubeCoordinates neighbor in plateNeighbors) {
                         var pressure = 0;
-                        var neighborVector = plates[world[neighbor].PlateCoords].Motion;
+                        var neighborVector = wData.PlateDict[wData.WorldDict[neighbor].PlateCoords].Motion;
                         var r = plate.Motion - neighborVector;
                         var neighborDir = (neighbor - tile);
                         // the component of r along neighbor dir
                         pressure += neighborDir.x != 0 ? r.x : 0;
                         pressure += neighborDir.y != 0 ? r.y : 0;
                         pressure += neighborDir.z != 0 ? r.z : 0;
-                        //Debug.Log("Self: " + plate.Motion + " | Neighbor: " + neighborVector + " | Resultant: " + r
-                        // + " | NeighborDir: " + neighborDir + " | Pressure: " + pressure);
+
+                        var neighborPlate = wData.PlateDict[wData.WorldDict[neighbor].PlateCoords];
 
                         // map pressure to elevation, THIS COULD USE A LOT OF TWEAKING
                         if (pressure > 0) {
-                            if (plate.Oceanic == plates[world[neighbor].PlateCoords].Oceanic) {
+                            if (plate.Oceanic == neighborPlate.Oceanic) {
                                 // same plate type, directly colliding
                                 if (plate.Oceanic) {
-                                    world[tile].Elevation = Mathf.Max(plate.DesiredElevation, plates[world[neighbor].PlateCoords].DesiredElevation);
-                                    world[tile].Elevation += (int)(Mathf.Abs(pressure) * 0.25f);
+                                    wData.WorldDict[tile].Elevation = Mathf.Max(plate.DesiredElevation, neighborPlate.DesiredElevation);
+                                    wData.WorldDict[tile].Elevation += (int)(pressure * 0.25f);
                                 } else {
-                                    world[tile].Elevation = Mathf.Max(plate.DesiredElevation, plates[world[neighbor].PlateCoords].DesiredElevation);
-                                    world[tile].Elevation += (int)(Mathf.Abs(pressure) * 0.65f);
+                                    wData.WorldDict[tile].Elevation = Mathf.Max(plate.DesiredElevation, neighborPlate.DesiredElevation);
+                                    wData.WorldDict[tile].Elevation += (int)(pressure * 1.45f);
                                 }
                             }
-                            else if (plate.Oceanic == true && plates[world[neighbor].PlateCoords].Oceanic == false) {
+                            else if (plate.Oceanic == true && neighborPlate.Oceanic == false) {
                                 // this is ocean, neighbor is land
-                                world[tile].Elevation = (int)Mathf.Lerp(plate.DesiredElevation, plates[world[neighbor].PlateCoords].DesiredElevation, 0.75f);
-                                world[tile].Elevation += (int)(Mathf.Abs(pressure) * 0.1f);
+                                wData.WorldDict[tile].Elevation = Mathf.Max(plate.DesiredElevation, neighborPlate.DesiredElevation);
+                                wData.WorldDict[tile].Elevation += (int)(-pressure * 0.3f);
                             }
-                            else if (plate.Oceanic == false && plates[world[neighbor].PlateCoords].Oceanic == true) {
+                            else if (plate.Oceanic == false && neighborPlate.Oceanic == true) {
                                 // this is land, neighbor is ocean
-                                world[tile].Elevation = (int)Mathf.Lerp(plate.DesiredElevation, plates[world[neighbor].PlateCoords].DesiredElevation, 0.15f);
-                                world[tile].Elevation += (int)(Mathf.Abs(pressure) * 0.35f);
+                                wData.WorldDict[tile].Elevation = Mathf.Min(plate.DesiredElevation, neighborPlate.DesiredElevation);
+                                wData.WorldDict[tile].Elevation += (int)(pressure * 0.25f);
                             }
                         }
-                        else if (pressure < 0 && world[tile].Elevation == 0) {
-                            world[tile].Elevation = (plate.DesiredElevation + plates[world[neighbor].PlateCoords].DesiredElevation) / 2;
-                            world[tile].Elevation += (int)(pressure * 0.02f);
-                            if (plate.Oceanic && world[tile].Elevation > 2) {
-                                world[tile].Elevation = 2; // clamp oceanic plates to 2 elevation, just above water
+                        else if (pressure < 0 && wData.WorldDict[tile].Elevation == 0) {
+                            if (plate.Oceanic != neighborPlate.Oceanic) {
+                                wData.WorldDict[tile].Elevation = (plate.DesiredElevation + neighborPlate.DesiredElevation) / 2;
+                                wData.WorldDict[tile].Elevation += (int)Mathf.Abs(pressure * (plate.Oceanic ? 0.15f : 0.1f));
+                            }
+                            else {
+                                if(plate.Oceanic) {
+                                    wData.WorldDict[tile].Elevation = Mathf.Max(plate.DesiredElevation, neighborPlate.DesiredElevation);
+                                    wData.WorldDict[tile].Elevation += (int)(Mathf.Abs(pressure) * 0.05f);
+                                } else {
+                                    wData.WorldDict[tile].Elevation = (plate.DesiredElevation + neighborPlate.DesiredElevation) / 2;
+                                    wData.WorldDict[tile].Elevation += (int)(pressure * 0.2f);
+                                }
                             }
                         }
 
                     }
                     // clamp values
-                    if(world[tile].Elevation < plate.MinElevation) {
-                        world[tile].Elevation = plate.MinElevation;
-                    } else if(world[tile].Elevation > plate.MaxElevation) {
-                        world[tile].Elevation = plate.MaxElevation;
+                    if(wData.WorldDict[tile].Elevation < plate.MinElevation) {
+                        wData.WorldDict[tile].Elevation = plate.MinElevation;
+                    } else if(wData.WorldDict[tile].Elevation > plate.MaxElevation) {
+                        wData.WorldDict[tile].Elevation = plate.MaxElevation;
                     }
 
                 }
 
-                var smoothingPasses = 3;
+                var smoothingPasses = 4;
                 while(smoothingPasses > 0) {
                     // testing some smoothing on the boundary elevations
                     foreach (CubeCoordinates tile in plate.BoundaryTiles) {
-                        var boundarySmoothedElevation = world[tile].Elevation;
+                        var boundarySmoothedElevation = wData.WorldDict[tile].Elevation;
                         var boundarySmoothing = 1;
-                        if (world[tile].Elevation >= 0) {
+                        if (wData.WorldDict[tile].Elevation >= 0) {
                             for (HexDirection d = HexDirection.N; d <= HexDirection.NW; d++) {
-                                if (world.TryGetValue(tile.GetNeighbor(d), out WorldTile value)) {
-                                    if (value.Elevation > world[tile].Elevation || (value.Elevation - world[tile].Elevation) > -13) {
+                                if (wData.WorldDict.TryGetValue(tile.GetNeighbor(d), out WorldTile value)) {
+                                    if (value.Elevation > wData.WorldDict[tile].Elevation || (value.Elevation - wData.WorldDict[tile].Elevation) > -72) {
                                         boundarySmoothedElevation += value.Elevation;
                                         boundarySmoothing++;
                                     }
                                 }
                             }
-                        } // else {
-                          //    for(HexDirection d = HexDirection.N; d <= HexDirection.NW; d++) {
-                          //        if(world.TryGetValue(tile.GetNeighbor(d), out WorldTile value)) {
-                          //            if(value.Elevation < world[tile].Elevation) {
-                          //                boundarySmoothedElevation += value.Elevation;
-                          //                boundarySmoothing++;
-                          //            }
-                          //        }
-                          //    }
-                          //}
+                        }
                         boundarySmoothedElevation /= boundarySmoothing;
-                        world[tile].Elevation = boundarySmoothedElevation;
+                        wData.WorldDict[tile].Elevation = boundarySmoothedElevation;
                     }
                     smoothingPasses--;
                 }
@@ -365,9 +352,10 @@ namespace EconSim
                  */
                 foreach(CubeCoordinates coords in plate.Tiles) {
 
-                    if(world[coords].Elevation == -100) {
+                    if(wData.WorldDict[coords].Elevation == -100) {
                         // find closest boundary
                         CubeCoordinates[] closestBTiles = new CubeCoordinates[] {
+                            plate.BoundaryTiles[0],
                             plate.BoundaryTiles[0],
                             plate.BoundaryTiles[0],
                             plate.BoundaryTiles[0]
@@ -394,9 +382,26 @@ namespace EconSim
                             }
                         }
 
-                        var bDistance = (CubeCoordinates.DistanceBetween(closestBTiles[0], coords) + CubeCoordinates.DistanceBetween(closestBTiles[1], coords) + CubeCoordinates.DistanceBetween(closestBTiles[2], coords)) / 3;
-                        var bElevation = (world[closestBTiles[0]].Elevation + world[closestBTiles[1]].Elevation + world[closestBTiles[2]].Elevation) / 3;
-                        world[coords].Elevation = Mathf.RoundToInt(Mathf.SmoothStep(plate.DesiredElevation, bElevation, Mathf.Pow(args.UpliftDecay, bDistance)));
+                        foreach (CubeCoordinates bTile in plate.BoundaryTiles) {
+                            if (!bTile.Equals(closestBTiles[0]) && !bTile.Equals(closestBTiles[1]) && !bTile.Equals(closestBTiles[2])) {
+                                if (CubeCoordinates.DistanceBetween(bTile, coords) < CubeCoordinates.DistanceBetween(closestBTiles[3], coords)) {
+                                    closestBTiles[3] = bTile;
+                                }
+                            }
+                        }
+
+                        var bDistance = (CubeCoordinates.DistanceBetween(closestBTiles[0], coords) 
+                            + CubeCoordinates.DistanceBetween(closestBTiles[1], coords) 
+                            + CubeCoordinates.DistanceBetween(closestBTiles[2], coords) 
+                            + CubeCoordinates.DistanceBetween(closestBTiles[3], coords)) / 4;
+                        //var bElevation = (world[closestBTiles[0]].Elevation + world[closestBTiles[1]].Elevation + world[closestBTiles[2]].Elevation) / 3;
+                        //world[coords].Elevation = Mathf.RoundToInt(Coserp(plate.DesiredElevation, bElevation, Mathf.Pow(args.UpliftDecay, bDistance)));
+                        var bElevation = (wData.WorldDict[closestBTiles[0]].Elevation 
+                            + wData.WorldDict[closestBTiles[1]].Elevation 
+                            + wData.WorldDict[closestBTiles[2]].Elevation + 
+                            wData.WorldDict[closestBTiles[3]].Elevation) / 4f;
+                        wData.WorldDict[coords].Elevation = Mathf.RoundToInt(Coserp(plate.DesiredElevation, 
+                            bElevation, Mathf.Pow(args.UpliftDecay, bDistance)));
                         //world[coords].Elevation = Mathf.RoundToInt(bElevation * Mathf.Pow(args.UpliftDecay, bDistance));
                         //if(plate.Oceanic) {
                         //    world[coords].Elevation -= 1;
@@ -408,16 +413,16 @@ namespace EconSim
 
                 foreach(CubeCoordinates coords in plate.Tiles) {
                     // some clamping, but with neighbor check to allow for small islands, but eliminate outliers
-                    if (plate.Oceanic && world[coords].Elevation > -1) {
+                    if (plate.Oceanic && wData.WorldDict[coords].Elevation > -1) {
                         var neighborLand = false;
                         for (HexDirection d = HexDirection.N; d <= HexDirection.NW; d++) {
-                            if (world.TryGetValue(coords.GetNeighbor(d), out WorldTile value) && value.Elevation > -1) {
+                            if (wData.WorldDict.TryGetValue(coords.GetNeighbor(d), out WorldTile value) && value.Elevation > -1) {
                                 neighborLand = true;
                                 break;
                             }
                         }
                         if (!neighborLand) {
-                            world[coords].Elevation = -1;
+                            wData.WorldDict[coords].Elevation = -1;
                         }
                     }
                 }
@@ -425,42 +430,27 @@ namespace EconSim
             }
 
             // for the visuals
-            foreach (WorldTile tile in world.Values) {
-                if(debug) {
-                    var exists = plates.TryGetValue(tile.Coordinates, out WorldPlate _p);
-                    if (exists) {
-                        tile.Terrain = TerrainType.Debug2; // used to represent plate centers for now
-                    }
-                } else {
-                    if (tile.Elevation < 0) {
-                        tile.Terrain = TerrainType.Ocean;
-                    }
-                    else if (tile.Elevation > 15) {
-                        tile.Terrain = TerrainType.Mountain;
-                    }
-                    else if (tile.Elevation > 10 && tile.Elevation <= 15) {
-                        tile.Terrain = TerrainType.Hill;
-                    }
-                    else if(tile.Elevation > 0 && tile.Elevation <= 10) {
-                        tile.Terrain = TerrainType.Land;
-                    } else {
-                        tile.Terrain = TerrainType.Sand;
-                    }
+            foreach (WorldTile tile in wData.WorldDict.Values) {
+                //if (tile.Elevation < 0) {
+                //    tile.Terrain = TerrainType.Ocean;
+                //}
+                if (tile.Elevation > 64) {
+                    tile.Terrain = TerrainType.Mountain;
+                }
+                else if (tile.Elevation > 46 && tile.Elevation <= 64) {
+                    tile.Terrain = TerrainType.Hill;
+                }
+                else if (tile.Elevation > 4 && tile.Elevation <= 46) {
+                    tile.Terrain = TerrainType.Land;
+                }
+                else {
+                    tile.Terrain = TerrainType.Sand;
                 }
             }
-
-            //foreach(WorldPlate plate in plates.Values) {
-            //    foreach(CubeCoordinates tile in plate.BoundaryTiles) {
-            //        world[tile].Terrain = TerrainType.Debug;
-            //    }
-            //}
 
             /*
             * WEATHER
             */
-            Dictionary<CubeCoordinates, CubeCoordinates> windCurrentMap = new Dictionary<CubeCoordinates, CubeCoordinates>();
-            Dictionary<CubeCoordinates, float> temperatureMap = new Dictionary<CubeCoordinates, float>();
-            Dictionary<CubeCoordinates, float> moistureMap = new Dictionary<CubeCoordinates, float>();
 
             // cool seed: 8437681
 
@@ -469,20 +459,21 @@ namespace EconSim
              * 
              * To do this, we are going to select all tiles that can be reached via a (+2, -1, -1) or (-2, +1, +1)
              * permutation from (0, 0, 0). Then, we will select their neighbors in the NW, SW, NE, SE directions.
+             * 
+             * Also assign temperatures for equator tiles.
              */
             var equator = new List<CubeCoordinates>();
             var current = new CubeCoordinates(0, 0, 0);
             current = current + CubeCoordinates.Scale(CubeCoordinates.Permutations[0], args.SizeZ/2);
-            //Debug.Log(world.TryGetValue(current, out WorldTile _));
-            while(world.TryGetValue(current, out WorldTile _)) {
+            while(wData.WorldDict.TryGetValue(current, out WorldTile _)) {
                 equator.Add(current);
-                temperatureMap[current] = world[current].Temperature = 30f;
-                if (world.TryGetValue(current.GetNeighbor(HexDirection.NE), out WorldTile _)) {
-                    temperatureMap[current.GetNeighbor(HexDirection.NE)] = world[current.GetNeighbor(HexDirection.NE)].Temperature = 30f;
+                wData.TempDict[current] = wData.WorldDict[current].Temperature = 30f;
+                if (wData.WorldDict.TryGetValue(current.GetNeighbor(HexDirection.NE), out WorldTile _)) {
+                    wData.TempDict[current.GetNeighbor(HexDirection.NE)] = wData.WorldDict[current.GetNeighbor(HexDirection.NE)].Temperature = 30f;
                     equator.Add(current.GetNeighbor(HexDirection.NE));
                 }
-                if (world.TryGetValue(current.GetNeighbor(HexDirection.SE), out WorldTile _)) {
-                    temperatureMap[current.GetNeighbor(HexDirection.SE)] = world[current.GetNeighbor(HexDirection.SE)].Temperature = 30f;
+                if (wData.WorldDict.TryGetValue(current.GetNeighbor(HexDirection.SE), out WorldTile _)) {
+                    wData.TempDict[current.GetNeighbor(HexDirection.SE)] = wData.WorldDict[current.GetNeighbor(HexDirection.SE)].Temperature = 30f;
                     equator.Add(current.GetNeighbor(HexDirection.SE));
                 }
                 current.x += 2;
@@ -490,16 +481,12 @@ namespace EconSim
                 current.z--;
             }
 
-            //foreach(CubeCoordinates tile in equator) {
-            //    world[tile].Terrain = TerrainType.Debug3;
-            //}
-
             /*
-             * 
+             * Assign temperatures for all tiles based on distance from the equator as well as elevation.
              */
 
-            foreach(CubeCoordinates tile in world.Keys) {
-                if(!temperatureMap.TryGetValue(tile, out float _)) {
+            foreach(CubeCoordinates tile in wData.WorldDict.Keys) {
+                if(!wData.TempDict.TryGetValue(tile, out float _)) {
                     var closestEqTile = equator[0];
                     foreach(CubeCoordinates eq in equator) {
                         if(CubeCoordinates.DistanceBetween(tile, closestEqTile) > CubeCoordinates.DistanceBetween(tile, eq)) {
@@ -507,25 +494,25 @@ namespace EconSim
                         }
                     }
                     if(CubeCoordinates.DistanceBetween(tile, closestEqTile) < 3) {
-                        temperatureMap[tile] = 30f;
+                        wData.TempDict[tile] = 30f;
                     } else {
-                        temperatureMap[tile] = Mathf.SmoothStep(-40f, 30f, Mathf.Pow(0.99f, CubeCoordinates.DistanceBetween(tile, closestEqTile)));
+                        wData.TempDict[tile] = Coserp(-40f, 30f, Mathf.Pow(args.TemperatureDecay, CubeCoordinates.DistanceBetween(tile, closestEqTile)));
                     }
-                    world[tile].Temperature = temperatureMap[tile];
+                    wData.WorldDict[tile].Temperature = wData.TempDict[tile];
                 }
             }
 
             // a seed: 8319346
-            foreach (CubeCoordinates tile in temperatureMap.Keys) {
-                var el = world[tile].Elevation;
+            foreach (CubeCoordinates tile in wData.TempDict.Keys) {
+                var el = wData.WorldDict[tile].Elevation;
                 // elevation should be able to drop the temp by about -20 to -40 degrees
                 // so, as el gets closer to maxEl, we drop the temperature further, on some kind of exponential curve
-                if(el > 9) {
-                    var tempChange = Mathf.Lerp(-40f, 0f, Mathf.Pow(0.96f, el - 9));
-                    world[tile].Temperature = world[tile].Temperature + tempChange;
-                } else if (el < -9) {
-                    var tempChange = Mathf.Lerp(-10f, 0f, Mathf.Pow(0.95f, Mathf.Abs(el)));
-                    world[tile].Temperature = world[tile].Temperature + tempChange;
+                if(el > 46) {
+                    var tempChange = Mathf.Lerp(-40f, 0f, Mathf.Pow(args.TemperatureDecayElevation, el - 9));
+                    wData.WorldDict[tile].Temperature = wData.WorldDict[tile].Temperature + tempChange;
+                } else if (el < -46) {
+                    var tempChange = Mathf.Lerp(-10f, 0f, Mathf.Pow(args.TemperatureDecayElevation-1, Mathf.Abs(el)));
+                    wData.WorldDict[tile].Temperature = wData.WorldDict[tile].Temperature + tempChange;
                 }
             }
 
@@ -537,27 +524,19 @@ namespace EconSim
              * We can most 
              */
 
-            // for temperature visuals. should remove later
-            //foreach (WorldTile tile in world.Values) {
-            //    if (temperatureMap[tile.Coordinates] >= 28.0f) {
-            //        tile.Terrain = TerrainType.Debug3;
-            //    } else if (temperatureMap[tile.Coordinates] >= 15.0f) {
-            //        tile.Terrain = TerrainType.Debug;
-            //    } else if (temperatureMap[tile.Coordinates] >= 7.5f) {
-            //        tile.Terrain = TerrainType.Sand;
-            //    } else if (temperatureMap[tile.Coordinates] >= -2.5f) {
-            //        tile.Terrain = TerrainType.Debug4;
-            //    } else if (temperatureMap[tile.Coordinates] >= -20.0f) {
-            //        tile.Terrain = TerrainType.Ocean;
-            //    } else if (temperatureMap[tile.Coordinates] >= - 30.0f) {
-            //        tile.Terrain = TerrainType.Debug2;
-            //    } else {
-            //        tile.Terrain = TerrainType.Debug5;
-            //    }
-            //}
+            current = new CubeCoordinates(0, 0, 0);
 
-            return world;
+            return wData;
 
+        }
+        
+        /*
+         * Cosine interpolation
+         */
+        float Coserp(float a,  float b, float t) {
+            float t2;
+            t2 = (1 - Mathf.Cos(t * Mathf.PI)) / 2;
+            return (a * (1 - t2) + b * t2);
         }
 
     }

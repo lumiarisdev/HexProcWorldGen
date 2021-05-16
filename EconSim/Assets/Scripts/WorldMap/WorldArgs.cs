@@ -32,9 +32,16 @@ namespace EconSim
 
         public int NumPlates;
         [Range(0, 1)]
+        public float PlateSpreadDecay;
+        [Range(0, 1)]
         public float PlateMotionScaleFactor;
         [Range(0, 1)]
         public float UpliftDecay;
+
+        [Range(0, 1)]
+        public float TemperatureDecay;
+        [Range(0, 1)]
+        public float TemperatureDecayElevation;
 
     }
 

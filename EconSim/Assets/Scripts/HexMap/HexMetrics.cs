@@ -20,7 +20,7 @@ public static class HexMetrics {
     public const float solidFactor = 0.8f; // determines inner hexagon size
     public const float blendFactor = 1f - solidFactor;
 
-    public const float elevationStep = 3f;
+    public const float elevationStep = 2f;
     public const int terracesPerSlope = 2;
     public const int terraceSteps = terracesPerSlope * 2 + 1;
     public const float horizontalTerraceStepSize = 1f / terraceSteps;
@@ -28,7 +28,7 @@ public static class HexMetrics {
 
     public static Texture2D noiseSource;
     public const float cellPerturbStrength = 3f;
-    public const float elevationPerturbStrength = 1.5f;
+    public const float elevationPerturbStrength = 1f;
     public const float noiseScale = 0.004f;
 
     public const float waterElevationOffset = -0.5f;
@@ -45,8 +45,8 @@ public static class HexMetrics {
      * It uses the elevationStep constant to derive the WorldMap elevation level, determining the edge type from that
      */
     public static HexEdgeType GetEdgeType(float y1, float y2) {
-        int y1Step = (int)(y1 / elevationStep);
-        int y2Step = (int)(y2 / elevationStep);
+        int y1Step = Mathf.RoundToInt(y1 / elevationStep);
+        int y2Step = Mathf.RoundToInt(y2 / elevationStep);
         if(y1Step == y2Step) {
             return HexEdgeType.Flat;
         }

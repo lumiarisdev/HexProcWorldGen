@@ -18,7 +18,7 @@ public class HexMeshCell : MonoBehaviour
 
     public bool IsUnderwater {
         get {
-            return waterLevel > transform.localPosition.y;
+            return waterLevel > Mathf.RoundToInt(transform.localPosition.y / HexMetrics.elevationStep);
         }
     }
 

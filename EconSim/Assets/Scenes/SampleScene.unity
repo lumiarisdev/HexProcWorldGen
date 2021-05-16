@@ -318,7 +318,7 @@ Camera:
     width: 1
     height: 1
   near clip plane: 0.3
-  far clip plane: 4000
+  far clip plane: 6000
   field of view: 60
   orthographic: 0
   orthographic size: 5
@@ -381,17 +381,21 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c88d34ec6f60acd4094a86e673a0da3b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  hexMap: {fileID: 0}
   generatorArgs:
-    WorldSeed: 8319346
+    WorldSeed: 7390724
     StringSeed: 
     UseStringSeed: 0
-    RandomizeSeed: 1
-    SizeChunksX: 70
-    SizeChunksZ: 50
+    RandomizeSeed: 0
+    SizeChunksX: 20
+    SizeChunksZ: 20
     OceanFrequency: 0.6
-    NumPlates: 55
-    PlateMotionScaleFactor: 0.15
-    UpliftDecay: 0.775
+    NumPlates: 5
+    PlateSpreadDecay: 0.9999
+    PlateMotionScaleFactor: 0.25
+    UpliftDecay: 0.915
+    TemperatureDecay: 0.99
+    TemperatureDecayElevation: 0.888
   DebugMode: 0
 --- !u!114 &1160655035
 MonoBehaviour:
@@ -406,8 +410,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   defaultColor: {r: 1, g: 1, b: 1, a: 1}
-  chunkCountX: 70
-  chunkCountZ: 50
+  debugMode: 0
   hexChunkPrefab: {fileID: 2579854813966232673, guid: c31485bdfd97a8a4dbbf12dff1434911, type: 3}
   hexMeshCellPrefab: {fileID: 1331116183330477846, guid: da05030600a77ad4697453022410e7e9, type: 3}
   cellLabelPrefab: {fileID: 5766728718376711944, guid: 3c7df4830ed111f43abee43d206cd82c, type: 3}

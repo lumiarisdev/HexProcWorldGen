@@ -12,14 +12,13 @@ namespace EconSim {
         public WorldArgs generatorArgs;
         public bool DebugMode;
 
-        public Dictionary<CubeCoordinates, WorldTile> worldTiles;
+        public WorldMapData worldData;
 
         private void Awake() {
 
             WorldGenerator gen = new WorldGenerator(generatorArgs);
-            gen.debug = DebugMode;
 
-            worldTiles = gen.GenerateWorld();
+            worldData = gen.GenerateWorld();
 
             hexMap = GetComponent<HexMap>();
 
@@ -38,7 +37,7 @@ namespace EconSim {
 
             if (Input.GetKey(KeyCode.G)) {
                 Debug.Log("Generating new world...");
-                worldTiles = WorldGenerator.GenerateWorld(generatorArgs);
+                worldData = WorldGenerator.GenerateWorld(generatorArgs);
                 Debug.Log(Time.deltaTime);
                 Debug.Log("Refreshing HexMap...");
                 hexMap.Refresh();
@@ -54,7 +53,7 @@ namespace EconSim {
          */
         private void OnDrawGizmos() {
             if(DebugMode) {
-                foreach (WorldTile tile in worldTiles.Values) {
+                foreach (WorldTile tile in worldData.WorldDict.Values) {
                     if (tile.MotionVector != null) {
                         Vector3 originWorldPos = CubeCoordinates.CubeToOffset(tile.MotionVector.Item1);
                         originWorldPos.x *= (2f * HexMetrics.outerRadius * 0.75f);
