@@ -386,11 +386,11 @@ MonoBehaviour:
     WorldSeed: 7390724
     StringSeed: 
     UseStringSeed: 0
-    RandomizeSeed: 0
-    SizeChunksX: 20
-    SizeChunksZ: 20
+    RandomizeSeed: 1
+    SizeChunksX: 90
+    SizeChunksZ: 50
     OceanFrequency: 0.6
-    NumPlates: 5
+    NumPlates: 20
     PlateSpreadDecay: 0.9999
     PlateMotionScaleFactor: 0.25
     UpliftDecay: 0.915
