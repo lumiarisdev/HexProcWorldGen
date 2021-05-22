@@ -106,6 +106,43 @@ public class HexMap : MonoBehaviour {
 
     }
 
+    private void OnDrawGizmos() {
+        if (debugMode == DebugMode.Tectonics) {
+            foreach (WorldTile tile in worldMap.worldData.WorldDict.Values) {
+                if (tile.MotionVector != null) {
+                    Vector3 originWorldPos = CubeCoordinates.CubeToOffset(tile.MotionVector.Item1);
+                    originWorldPos.x *= (2f * HexMetrics.outerRadius * 0.75f);
+                    originWorldPos.y = tile.Elevation * HexMetrics.elevationStep;
+                    originWorldPos.z = (originWorldPos.z + originWorldPos.x * 0.5f - originWorldPos.x / 2) * (Mathf.Sqrt(3) * HexMetrics.outerRadius);
+                    Vector3 driftWorldPos = CubeCoordinates.CubeToOffset(tile.MotionVector.Item2);
+                    driftWorldPos.x *= (2f * HexMetrics.outerRadius * 0.75f);
+                    driftWorldPos.y = tile.Elevation * HexMetrics.elevationStep;
+                    driftWorldPos.z = (driftWorldPos.z + driftWorldPos.x * 0.5f - driftWorldPos.x / 2) * (Mathf.Sqrt(3) * HexMetrics.outerRadius);
+                    //var vWorldPos = driftWorldPos - originWorldPos;
+                    //vWorldPos *= 0.125f;
+                    //driftWorldPos = originWorldPos + vWorldPos;
+                    Gizmos.DrawLine(originWorldPos, driftWorldPos);
+                }
+            }
+        } else if (debugMode == DebugMode.Wind) {
+            foreach(CubeCoordinates tile in worldMap.worldData.WindDict.Keys) {
+                Vector3 windGizmoLength = CubeCoordinates.OffsetToCube(worldMap.worldData.WindDict[tile]).ToOffset();
+                Vector3 windGizmoOrigin = CubeCoordinates.CubeToOffset(tile);
+                Vector3 windGizmoEnd = windGizmoOrigin + windGizmoLength;
+
+                windGizmoOrigin.x *= (2f * HexMetrics.outerRadius * 0.75f);
+                windGizmoOrigin.y = worldMap.worldData.WorldDict[tile].Elevation * HexMetrics.elevationStep;
+                windGizmoOrigin.z = (windGizmoOrigin.z + windGizmoOrigin.x * 0.5f - windGizmoOrigin.x / 2) * (Mathf.Sqrt(3) * HexMetrics.outerRadius);
+
+                windGizmoEnd.x *= (2f * HexMetrics.outerRadius * 0.75f);
+                windGizmoEnd.y = worldMap.worldData.WorldDict[tile].Elevation * HexMetrics.elevationStep;
+                windGizmoEnd.z = (windGizmoEnd.z + windGizmoEnd.x * 0.5f - windGizmoEnd.x / 2) * (Mathf.Sqrt(3) * HexMetrics.outerRadius);
+
+                Gizmos.DrawLine(windGizmoOrigin, windGizmoEnd);
+            }
+        }
+    }
+
     /*
      * Refresh the entire map
      * 
@@ -141,7 +178,7 @@ public class HexMap : MonoBehaviour {
      * Update a cell based on the current state of its sister tile.
      */
     public void UpdateCell(WorldMapData wData, WorldTile tile) {
-        if (debugMode == DebugMode.None) {
+        if (debugMode == DebugMode.None || debugMode == DebugMode.Wind) {
             // normal terrain
             hexMeshCells[tile.Coordinates].color = colors[(int)tile.Terrain];
         }
@@ -209,7 +246,7 @@ public class HexMap : MonoBehaviour {
             offset.x * (width * 0.75f),
             wTile.Elevation * HexMetrics.elevationStep,
             (offset.z + (offset.x * 0.5f) - (offset.x / 2)) * (height));
-        pos.y = pos.y + (HexMetrics.SampleNoise(pos).y * 2f - 1f);
+        pos.y = pos.y + (HexMetrics.SampleNoise(pos).y * 2f - 1f) * HexMetrics.elevationPerturbStrength;
 
         // TODO: elevation perturbation, could also be achieved elsewhere
         //pos.y += (HexMetrics.SampleNoise(pos).y * 2f - 1f) * HexMetrics.elevationPerturbStrength;
@@ -219,7 +256,7 @@ public class HexMap : MonoBehaviour {
         cell.coordinates = wTile.Coordinates;
 
         // initial coloring, based on debug modes and worldtile attributes
-        if (debugMode == DebugMode.None) {
+        if (debugMode == DebugMode.None || debugMode == DebugMode.Wind) {
             // normal terrain
             cell.color = colors[(int)wTile.Terrain];
         }

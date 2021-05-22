@@ -511,7 +511,7 @@ namespace EconSim
                     var tempChange = Mathf.Lerp(-40f, 0f, Mathf.Pow(args.TemperatureDecayElevation, el - 9));
                     wData.WorldDict[tile].Temperature = wData.WorldDict[tile].Temperature + tempChange;
                 } else if (el < -46) {
-                    var tempChange = Mathf.Lerp(-10f, 0f, Mathf.Pow(args.TemperatureDecayElevation-1, Mathf.Abs(el)));
+                    var tempChange = Mathf.Lerp(-7.5f, 0f, Mathf.Pow(args.TemperatureDecayElevation-1, Mathf.Abs(el)));
                     wData.WorldDict[tile].Temperature = wData.WorldDict[tile].Temperature + tempChange;
                 }
             }
@@ -523,8 +523,49 @@ namespace EconSim
              * just like on earth. So we need to divide the world into 6 even sections.
              * We can most 
              */
+            var windCellSizeX = args.SizeX / 6;
+            var windCellSizeZ = args.SizeZ / 6;
+            var WindCellSize = CubeCoordinates.OffsetToCube(new Vector3(0, 0, windCellSizeZ));
+            CubeCoordinates[] windCells = {
+                new CubeCoordinates(0, 0, 0),
+                new CubeCoordinates(0, WindCellSize.y,  WindCellSize.z),
+                new CubeCoordinates(0, 2*WindCellSize.y,  2*WindCellSize.z),
+                new CubeCoordinates(0, 3*WindCellSize.y,  3*WindCellSize.z),
+                new CubeCoordinates(0, 4*WindCellSize.y,  4*WindCellSize.z),
+                new CubeCoordinates(0, 5*WindCellSize.y,  5*WindCellSize.z),
+            };
+            // uncomment to assign wind to the cell tiles, for debugging
+            //foreach(CubeCoordinates cell in windCells) {
+            //    wData.WindDict[cell] = new Vector3((Mathf.InverseLerp(windCells[0].z, windCells[1].z, cell.z) * -2f) + CubeCoordinates.Permutations[0].x,
+            //            (Mathf.InverseLerp(windCells[0].z, windCells[1].z, cell.z) * 1f) + CubeCoordinates.Permutations[0].y,
+            //          (Mathf.InverseLerp(windCells[0].z, windCells[1].z, cell.z) * 1f) + CubeCoordinates.Permutations[0].z
+            //        );
+            //}
 
-            current = new CubeCoordinates(0, 0, 0);
+            // x >=
+            // y <
+            // 
+
+            foreach (CubeCoordinates tile in wData.WorldDict.Keys) {
+                // determine wind cell
+                var windCell = windCells[0];
+                for (int i = 1; i < windCells.Length; i++) {
+                    if ((windCells[i].x <= tile.x && windCells[i].y > tile.y)) {
+                        windCell = windCells[i];
+                    }
+                }
+                // wind for wind cell 0
+                if (windCell.Equals(windCells[0])) {
+                    var windDirection = new Vector3(
+                        (Mathf.InverseLerp(windCells[0].z, windCells[1].z, tile.z) * -2f) + CubeCoordinates.Permutations[0].x,
+                        (Mathf.InverseLerp(windCells[0].z, windCells[1].z, tile.z) * 1f) + CubeCoordinates.Permutations[0].y,
+                        (Mathf.InverseLerp(windCells[0].z, windCells[1].z, tile.z) * 1f) + CubeCoordinates.Permutations[0].z
+                        );
+                    var windMag = Mathf.InverseLerp(windCells[1].z, windCells[0].z, tile.z) * 100f;
+                    var wind = windDirection; // * windMag;
+                    wData.WindDict[tile] = wind;
+                }
+            }
 
             return wData;
 

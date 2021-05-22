@@ -387,10 +387,10 @@ MonoBehaviour:
     StringSeed: 
     UseStringSeed: 0
     RandomizeSeed: 1
-    SizeChunksX: 90
-    SizeChunksZ: 50
+    SizeChunksX: 30
+    SizeChunksZ: 30
     OceanFrequency: 0.6
-    NumPlates: 20
+    NumPlates: 7
     PlateSpreadDecay: 0.9999
     PlateMotionScaleFactor: 0.25
     UpliftDecay: 0.915
@@ -410,7 +410,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   defaultColor: {r: 1, g: 1, b: 1, a: 1}
-  debugMode: 0
+  debugMode: 3
   hexChunkPrefab: {fileID: 2579854813966232673, guid: c31485bdfd97a8a4dbbf12dff1434911, type: 3}
   hexMeshCellPrefab: {fileID: 1331116183330477846, guid: da05030600a77ad4697453022410e7e9, type: 3}
   cellLabelPrefab: {fileID: 5766728718376711944, guid: 3c7df4830ed111f43abee43d206cd82c, type: 3}

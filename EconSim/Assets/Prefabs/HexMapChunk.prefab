@@ -424,5 +424,5 @@ MonoBehaviour:
   waterMesh: {fileID: 9023570679683368777}
   shoreMesh: {fileID: 3081621366615645984}
   color: {r: 0, g: 0, b: 0, a: 0}
-  displayUI: 0
+  displayUI: 1
   drawWater: 1

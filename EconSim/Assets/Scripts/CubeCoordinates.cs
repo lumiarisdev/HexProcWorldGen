@@ -122,7 +122,7 @@ namespace EconSim {
         }
 
         public static CubeCoordinates OffsetToCube(Vector3 coords) {
-            return OffsetToCube(new Vector3Int((int)coords.x, (int)coords.y, (int)coords.z));
+            return OffsetToCube(new Vector3Int(Mathf.RoundToInt(coords.x), Mathf.RoundToInt(coords.y), Mathf.RoundToInt(coords.z)));
         }
 
         public static Vector3Int CubeToOffset(CubeCoordinates coords) {
