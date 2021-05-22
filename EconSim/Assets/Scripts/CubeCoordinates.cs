@@ -110,6 +110,10 @@ namespace EconSim {
             return c.Validate();
         }
 
+        public static CubeCoordinates OffsetToCube(int x, int z) {
+            return OffsetToCube(new Vector3(x, 0, z));
+        }
+
         // NEEDS VERIFICATION THAT CONVERSION IS CORRECT
         // appears correct
         // NOTE - conversion from Odd-q offset coordinates to cube coordinates

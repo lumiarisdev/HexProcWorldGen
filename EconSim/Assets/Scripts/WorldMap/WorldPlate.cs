@@ -7,6 +7,12 @@ namespace EconSim
     public class WorldPlate
     {
 
+        public WorldPlate(CubeCoordinates origin) {
+            Origin = origin;
+            Tiles = new List<CubeCoordinates>();
+            BoundaryTiles = new List<CubeCoordinates>();
+        }
+
         public CubeCoordinates Origin;
 
         public List<CubeCoordinates> Tiles;

@@ -19,10 +19,81 @@ namespace EconSim
             return new WorldGenerator(_args).GenerateWorld();
         }
 
+        public WorldMapData GenerateWorld2() {
+
+            // apply seed
+            ApplySeed();
+
+            // create data container
+            var wData = new WorldMapData();
+
+            // create tectonic plates
+
+
+            return wData;
+
+        }
+
+        /*
+         * Create tectonic plates
+         */
+        private Dictionary<CubeCoordinates, WorldPlate> CreatePlates() {
+
+            var plates = new Dictionary<CubeCoordinates, WorldPlate>();
+
+            int randX = UnityEngine.Random.Range(0, args.SizeX);
+            int randZ = UnityEngine.Random.Range(0, args.SizeZ);
+
+            for (int i = 0; i < args.NumPlates; i++) {
+
+                while(plates.TryGetValue(CubeCoordinates.OffsetToCube(randX, randZ), out WorldPlate _) {
+                    randX = UnityEngine.Random.Range(0, args.SizeX);
+                    randZ = UnityEngine.Random.Range(0, args.SizeZ);
+                }
+                var origin = CubeCoordinates.OffsetToCube(randX, randZ);
+                plates[origin] = new WorldPlate(origin);
+                plates[origin].Oceanic = args.OceanFrequency > UnityEngine.Random.Range(0f, 1f);
+                
+                // desired elevation
+                plates[origin].DesiredElevation = plates[origin].Oceanic ?
+                    UnityEngine.Random.Range(-45, -1) : UnityEngine.Random.Range(4, 40);
+
+                // plate motion
+                var drift = origin;
+                while (drift.Equals(origin)) {
+                    randX = UnityEngine.Random.Range(0, args.SizeX);
+                    randZ = UnityEngine.Random.Range(0, args.SizeZ);
+                    drift = CubeCoordinates.OffsetToCube(randX, randZ);
+                }
+                plates[origin].DriftAxis = drift;
+                // calculate motion vector
+                // get the absolute vector from drift - origin
+                // then scale, scaling using lerp rn, lets see if it works
+                // might want to add a rotation as well, to simulate plate rotations
+                plates[origin].Motion = CubeCoordinates.Lerp(origin, drift, args.PlateMotionScaleFactor) - origin;
+
+
+
+            }
+
+        }
+
+        // apply seed according to world args
+        private void ApplySeed() {
+            if (args.UseStringSeed) {
+                args.WorldSeed = args.StringSeed.GetHashCode();
+            }
+            if (args.RandomizeSeed) {
+                args.WorldSeed = UnityEngine.Random.Range(0, 9999999);
+            }
+            UnityEngine.Random.InitState(args.WorldSeed);
+        }
+
+        // OLD GENERATE METHOD
         public WorldMapData GenerateWorld() {
 
             var wData = new WorldMapData();
-
+            
             // seeding
             if(args.UseStringSeed) {
                 args.WorldSeed = args.StringSeed.GetHashCode();
