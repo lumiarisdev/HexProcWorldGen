@@ -126,19 +126,20 @@ public class HexMap : MonoBehaviour {
             }
         } else if (debugMode == DebugMode.Wind) {
             foreach(CubeCoordinates tile in worldMap.worldData.WindDict.Keys) {
-                Vector3 windGizmoLength = CubeCoordinates.OffsetToCube(worldMap.worldData.WindDict[tile]).ToOffset();
+                Vector3 windGizmoLength = worldMap.worldData.WindDict[tile];
                 Vector3 windGizmoOrigin = CubeCoordinates.CubeToOffset(tile);
                 Vector3 windGizmoEnd = windGizmoOrigin + windGizmoLength;
 
                 windGizmoOrigin.x *= (2f * HexMetrics.outerRadius * 0.75f);
                 windGizmoOrigin.y = worldMap.worldData.WorldDict[tile].Elevation * HexMetrics.elevationStep;
-                windGizmoOrigin.z = (windGizmoOrigin.z + windGizmoOrigin.x * 0.5f - windGizmoOrigin.x / 2) * (Mathf.Sqrt(3) * HexMetrics.outerRadius);
+                windGizmoOrigin.z = (windGizmoOrigin.z) * (Mathf.Sqrt(3) * HexMetrics.outerRadius);
 
                 windGizmoEnd.x *= (2f * HexMetrics.outerRadius * 0.75f);
                 windGizmoEnd.y = worldMap.worldData.WorldDict[tile].Elevation * HexMetrics.elevationStep;
                 windGizmoEnd.z = (windGizmoEnd.z + windGizmoEnd.x * 0.5f - windGizmoEnd.x / 2) * (Mathf.Sqrt(3) * HexMetrics.outerRadius);
 
                 Gizmos.DrawLine(windGizmoOrigin, windGizmoEnd);
+                Gizmos.DrawSphere(windGizmoOrigin, HexMetrics.outerRadius/6);
             }
         }
     }

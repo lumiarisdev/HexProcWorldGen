@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using System;
 using Nito.Collections;
+using System.Linq;
 
 namespace EconSim
 {
@@ -27,11 +28,28 @@ namespace EconSim
             // create data container
             var wData = new WorldMapData();
 
-            // create tectonic plates
+            // create inital tiles
+            wData.WorldDict = CreateTiles();
 
+            // create tectonic plates
+            wData.PlateDict = CreatePlates();
+            
 
             return wData;
 
+        }
+
+        private Dictionary<CubeCoordinates, WorldTile> CreateTiles() {
+            var tiles = new Dictionary<CubeCoordinates, WorldTile>();
+            for(int x = 0; x < args.SizeX; x++) {
+                for(int z = 0; z < args.SizeZ; z++) {
+                    var coords = CubeCoordinates.OffsetToCube(x, z);
+                    tiles[coords] = new WorldTile {
+                        Coordinates = coords,
+                    };
+                }
+            }
+            return tiles;
         }
 
         /*
@@ -44,9 +62,11 @@ namespace EconSim
             int randX = UnityEngine.Random.Range(0, args.SizeX);
             int randZ = UnityEngine.Random.Range(0, args.SizeZ);
 
+            var assigned = new Dictionary<CubeCoordinates, bool>();
+
             for (int i = 0; i < args.NumPlates; i++) {
 
-                while(plates.TryGetValue(CubeCoordinates.OffsetToCube(randX, randZ), out WorldPlate _) {
+                while(plates.TryGetValue(CubeCoordinates.OffsetToCube(randX, randZ), out WorldPlate _)) {
                     randX = UnityEngine.Random.Range(0, args.SizeX);
                     randZ = UnityEngine.Random.Range(0, args.SizeZ);
                 }
@@ -72,10 +92,42 @@ namespace EconSim
                 // might want to add a rotation as well, to simulate plate rotations
                 plates[origin].Motion = CubeCoordinates.Lerp(origin, drift, args.PlateMotionScaleFactor) - origin;
 
-
-
+                // random flood fill to assign tiles to plate
+                // still need to do supplimentary assignment later
+                int maxPlateSize = (int)(args.SizeX * args.SizeZ / (args.NumPlates * 0.25f));
+                Deque<CubeCoordinates> ffDeq = new Deque<CubeCoordinates>();
+                Dictionary<CubeCoordinates, bool> visited = new Dictionary<CubeCoordinates, bool>();
+                var chance = 100f;
+                var decay = args.PlateSpreadDecay;
+                ffDeq.AddToBack(origin);
+                visited[origin] = true;
+                while (ffDeq.Count > 0) {
+                    var coords = ffDeq.RemoveFromFront();
+                    if (!assigned.TryGetValue(coords, out bool _)) {
+                        plates[coords].Tiles.Add(coords);
+                        assigned[coords] = true;
+                        if (chance >= UnityEngine.Random.Range(0f, 100f)) {
+                            for (HexDirection d = HexDirection.N; d <= HexDirection.NW; d++) {
+                                if (!visited.TryGetValue(coords.GetNeighbor(d), out bool _)) {
+                                    if (ValidInMap(coords.GetNeighbor(d))) {
+                                        ffDeq.AddToBack(coords.GetNeighbor(d));
+                                        visited[coords.GetNeighbor(d)] = true;
+                                    }
+                                }
+                            }
+                        }
+                        chance *= decay;
+                    }
+                }
             }
 
+            return plates;
+
+        }
+
+        private bool ValidInMap(CubeCoordinates c) {
+            CubeCoordinates max = CubeCoordinates.OffsetToCube(args.SizeX, args.SizeZ);
+            return (c.x < max.x && c.x >= 0) && (c.y > max.y && c.y <= 0) && (c.z < max.z && c.z >= 0);
         }
 
         // apply seed according to world args
@@ -131,10 +183,7 @@ namespace EconSim
                     randZ = UnityEngine.Random.Range(0, args.SizeZ);
                     _origin = CubeCoordinates.OffsetToCube(new Vector3(randX, 0f, randZ));
                 }
-                wData.PlateDict[_origin] = new WorldPlate {
-                    Origin = _origin,
-                    Tiles = new List<CubeCoordinates>(),
-                    BoundaryTiles = new List<CubeCoordinates>(),
+                wData.PlateDict[_origin] = new WorldPlate(_origin) {
                     // classify plate as tectonic or oceanic
                     Oceanic = args.OceanFrequency > UnityEngine.Random.Range(0f, 1f),
                 };
@@ -255,7 +304,7 @@ namespace EconSim
                                 break;
                             }
                         }
-                    }
+                    } 
                 }
             }
 
@@ -617,26 +666,62 @@ namespace EconSim
             // y <
             // 
 
-            foreach (CubeCoordinates tile in wData.WorldDict.Keys) {
-                // determine wind cell
-                var windCell = windCells[0];
-                for (int i = 1; i < windCells.Length; i++) {
-                    if ((windCells[i].x <= tile.x && windCells[i].y > tile.y)) {
-                        windCell = windCells[i];
+            for(int x = 0; x < args.SizeX; x++) {
+                for(int z = 0; z < args.SizeZ; z++) {
+                    var tile = CubeCoordinates.OffsetToCube(x, z);
+                    var windCell = windCells[0];
+                    for(int i = 1; i < windCells.Length; i++) {
+                        if(windCells[i].ToOffset().z < z) {
+                            windCell = windCells[i];
+                        } else {
+                            break;
+                        }
+                    }
+                    // south polar easterlies
+                    if (windCell.Equals(windCells[0])) {
+                        var windDirection = new Vector3(
+                            ((Mathf.InverseLerp(windCells[0].ToOffset().z, windCells[1].ToOffset().z, z) * -2f) + CubeCoordinates.Permutations[5].x) /2f,
+                            ((Mathf.InverseLerp(windCells[0].ToOffset().z, windCells[1].ToOffset().z, z) * 1f) + CubeCoordinates.Permutations[5].y) / 2f,
+                            ((Mathf.InverseLerp(windCells[0].ToOffset().z, windCells[1].ToOffset().z, z) * 1f) + CubeCoordinates.Permutations[5].z) / 2f
+                            );
+                        var windMag = Mathf.InverseLerp(windCells[1].z, windCells[0].z, tile.z) * 100f;
+                        var wind = windDirection; // * windMag;
+                        wData.WindDict[tile] = wind;
+                    }
+                    // southern westerlies
+                    else if (windCell.Equals(windCells[1])) {
+                        var t = Mathf.InverseLerp(windCells[1].ToOffset().z, windCells[2].ToOffset().z, z);
+                        var windX = Mathf.Lerp(CubeCoordinates.Permutations[2].x, Mathf.Sqrt(2), t);
+                        var windY = Mathf.Lerp(0, -1f, t);
+                        var windZ = Mathf.Lerp(CubeCoordinates.Permutations[2].x, -1f, t);
+                        var windDirection = new Vector3(windX, windY, windZ);
+                        var windMag = Mathf.InverseLerp(windCells[2].z, windCells[1].z, tile.z) * 100f;
+                        var wind = windDirection; // * windMag;
+                        wData.WindDict[tile] = wind;
                     }
                 }
-                // wind for wind cell 0
-                if (windCell.Equals(windCells[0])) {
-                    var windDirection = new Vector3(
-                        (Mathf.InverseLerp(windCells[0].z, windCells[1].z, tile.z) * -2f) + CubeCoordinates.Permutations[0].x,
-                        (Mathf.InverseLerp(windCells[0].z, windCells[1].z, tile.z) * 1f) + CubeCoordinates.Permutations[0].y,
-                        (Mathf.InverseLerp(windCells[0].z, windCells[1].z, tile.z) * 1f) + CubeCoordinates.Permutations[0].z
-                        );
-                    var windMag = Mathf.InverseLerp(windCells[1].z, windCells[0].z, tile.z) * 100f;
-                    var wind = windDirection; // * windMag;
-                    wData.WindDict[tile] = wind;
-                }
             }
+
+            //foreach (CubeCoordinates tile in wData.WorldDict.Keys) {
+            //    // determine wind cell
+            //    var windCell = windCells[0];
+            //    for (int i = 1; i < windCells.Length; i++) {
+            //        if ((windCells[i].x <= tile.x && windCells[i].y > tile.y)) {
+            //            windCell = windCells[i];
+            //        }
+            //    }
+            //    // wind for wind cell 0
+            //    if (windCell.Equals(windCells[0])) {
+            //        var windDirection = new Vector3(
+            //            (Mathf.InverseLerp(windCells[0].z, windCells[1].z, tile.z) * -2f) + CubeCoordinates.Permutations[0].x,
+            //            (Mathf.InverseLerp(windCells[0].z, windCells[1].z, tile.z) * 1f) + CubeCoordinates.Permutations[0].y,
+            //            (Mathf.InverseLerp(windCells[0].z, windCells[1].z, tile.z) * 1f) + CubeCoordinates.Permutations[0].z
+            //            );
+            //        var windMag = Mathf.InverseLerp(windCells[1].z, windCells[0].z, tile.z) * 100f;
+            //        var wind = windDirection; // * windMag;
+            //        wData.WindDict[tile] = wind;
+            //    }
+            //}
 
             return wData;
 
