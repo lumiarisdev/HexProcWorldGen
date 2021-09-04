@@ -677,27 +677,18 @@ namespace EconSim
                             break;
                         }
                     }
+                    var dir = 0;
+                    var mag = 0;
                     // south polar easterlies
                     if (windCell.Equals(windCells[0])) {
-                        var windDirection = new Vector3(
-                            ((Mathf.InverseLerp(windCells[0].ToOffset().z, windCells[1].ToOffset().z, z) * -2f) + CubeCoordinates.Permutations[5].x) /2f,
-                            ((Mathf.InverseLerp(windCells[0].ToOffset().z, windCells[1].ToOffset().z, z) * 1f) + CubeCoordinates.Permutations[5].y) / 2f,
-                            ((Mathf.InverseLerp(windCells[0].ToOffset().z, windCells[1].ToOffset().z, z) * 1f) + CubeCoordinates.Permutations[5].z) / 2f
-                            );
-                        var windMag = Mathf.InverseLerp(windCells[1].z, windCells[0].z, tile.z) * 100f;
-                        var wind = windDirection; // * windMag;
-                        wData.WindDict[tile] = wind;
+                        var t = Mathf.InverseLerp(windCells[0].ToOffset().z, windCells[1].ToOffset().z, z);
+                        dir = (int)Mathf.Lerp(dir, -270, t);
+                        mag = (int)(Mathf.InverseLerp(windCells[1].ToOffset().z, windCells[0].ToOffset().z, z) * 100f);
+                        wData.WindDict[tile] = new Tuple<int, float>(dir, mag);
                     }
                     // southern westerlies
                     else if (windCell.Equals(windCells[1])) {
-                        var t = Mathf.InverseLerp(windCells[1].ToOffset().z, windCells[2].ToOffset().z, z);
-                        var windX = Mathf.Lerp(CubeCoordinates.Permutations[2].x, Mathf.Sqrt(2), t);
-                        var windY = Mathf.Lerp(0, -1f, t);
-                        var windZ = Mathf.Lerp(CubeCoordinates.Permutations[2].x, -1f, t);
-                        var windDirection = new Vector3(windX, windY, windZ);
-                        var windMag = Mathf.InverseLerp(windCells[2].z, windCells[1].z, tile.z) * 100f;
-                        var wind = windDirection; // * windMag;
-                        wData.WindDict[tile] = wind;
+                        
                     }
                 }
             }

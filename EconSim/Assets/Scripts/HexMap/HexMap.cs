@@ -113,11 +113,11 @@ public class HexMap : MonoBehaviour {
                     Vector3 originWorldPos = CubeCoordinates.CubeToOffset(tile.MotionVector.Item1);
                     originWorldPos.x *= (2f * HexMetrics.outerRadius * 0.75f);
                     originWorldPos.y = tile.Elevation * HexMetrics.elevationStep;
-                    originWorldPos.z = (originWorldPos.z + originWorldPos.x * 0.5f - originWorldPos.x / 2) * (Mathf.Sqrt(3) * HexMetrics.outerRadius);
+                    originWorldPos.z = (originWorldPos.z + (originWorldPos.x * 0.5f) - (originWorldPos.x / 2)) * (Mathf.Sqrt(3) * HexMetrics.outerRadius);
                     Vector3 driftWorldPos = CubeCoordinates.CubeToOffset(tile.MotionVector.Item2);
                     driftWorldPos.x *= (2f * HexMetrics.outerRadius * 0.75f);
                     driftWorldPos.y = tile.Elevation * HexMetrics.elevationStep;
-                    driftWorldPos.z = (driftWorldPos.z + driftWorldPos.x * 0.5f - driftWorldPos.x / 2) * (Mathf.Sqrt(3) * HexMetrics.outerRadius);
+                    driftWorldPos.z = (driftWorldPos.z + (driftWorldPos.x * 0.5f) - (driftWorldPos.x / 2)) * (Mathf.Sqrt(3) * HexMetrics.outerRadius);
                     //var vWorldPos = driftWorldPos - originWorldPos;
                     //vWorldPos *= 0.125f;
                     //driftWorldPos = originWorldPos + vWorldPos;
@@ -126,20 +126,17 @@ public class HexMap : MonoBehaviour {
             }
         } else if (debugMode == DebugMode.Wind) {
             foreach(CubeCoordinates tile in worldMap.worldData.WindDict.Keys) {
-                Vector3 windGizmoLength = worldMap.worldData.WindDict[tile];
-                Vector3 windGizmoOrigin = CubeCoordinates.CubeToOffset(tile);
-                Vector3 windGizmoEnd = windGizmoOrigin + windGizmoLength;
+                var origin = hexMeshCells[tile].transform.localPosition;
+                var length = HexMetrics.innerRadius * 0.1f * worldMap.worldData.WindDict[tile].Item2;
+                var dir = worldMap.worldData.WindDict[tile].Item1;
+                var dirRad = Mathf.PI / 180 * dir;
+                var end = new Vector3(
+                    origin.x + length * Mathf.Sin(dirRad),
+                    origin.y,
+                    origin.z + length * Mathf.Cos(dirRad));
 
-                windGizmoOrigin.x *= (2f * HexMetrics.outerRadius * 0.75f);
-                windGizmoOrigin.y = worldMap.worldData.WorldDict[tile].Elevation * HexMetrics.elevationStep;
-                windGizmoOrigin.z = (windGizmoOrigin.z) * (Mathf.Sqrt(3) * HexMetrics.outerRadius);
-
-                windGizmoEnd.x *= (2f * HexMetrics.outerRadius * 0.75f);
-                windGizmoEnd.y = worldMap.worldData.WorldDict[tile].Elevation * HexMetrics.elevationStep;
-                windGizmoEnd.z = (windGizmoEnd.z + windGizmoEnd.x * 0.5f - windGizmoEnd.x / 2) * (Mathf.Sqrt(3) * HexMetrics.outerRadius);
-
-                Gizmos.DrawLine(windGizmoOrigin, windGizmoEnd);
-                Gizmos.DrawSphere(windGizmoOrigin, HexMetrics.outerRadius/6);
+                Gizmos.DrawLine(hexMeshCells[tile].transform.localPosition, end);
+                Gizmos.DrawSphere(hexMeshCells[tile].transform.localPosition, HexMetrics.outerRadius/8);
             }
         }
     }
