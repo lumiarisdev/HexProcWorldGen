@@ -127,7 +127,7 @@ public class HexMap : MonoBehaviour {
         } else if (debugMode == DebugMode.Wind) {
             foreach(CubeCoordinates tile in worldMap.worldData.WindDict.Keys) {
                 var origin = hexMeshCells[tile].transform.localPosition;
-                var length = HexMetrics.innerRadius * 0.1f * worldMap.worldData.WindDict[tile].Item2;
+                var length = HexMetrics.innerRadius * worldMap.worldData.WindDict[tile].Item2;
                 var dir = worldMap.worldData.WindDict[tile].Item1;
                 var dirRad = Mathf.PI / 180 * dir;
                 var end = new Vector3(
@@ -136,7 +136,7 @@ public class HexMap : MonoBehaviour {
                     origin.z + length * Mathf.Cos(dirRad));
 
                 Gizmos.DrawLine(hexMeshCells[tile].transform.localPosition, end);
-                Gizmos.DrawSphere(hexMeshCells[tile].transform.localPosition, HexMetrics.outerRadius/8);
+                //Gizmos.DrawSphere(hexMeshCells[tile].transform.localPosition, HexMetrics.outerRadius/8);
             }
         }
     }
@@ -290,6 +290,11 @@ public class HexMap : MonoBehaviour {
         // text label
         cell.label = CreateCellLabel(pos, wTile);
 
+        // wind debug
+        if(debugMode == DebugMode.Wind) {
+            cell.label = CreateCellLabelT(pos, wTile, wTile.Wind.Item1.ToString() + "\n" + wTile.Wind.Item2.ToString());
+        }
+
         return cell;
     }
 
@@ -303,6 +308,16 @@ public class HexMap : MonoBehaviour {
         uiPos.z = wTile.Elevation * -HexMetrics.elevationStep;
         label.rectTransform.localPosition = uiPos;
         label.text = wTile.Coordinates.ToStringOnSeparateLines();
+        return label;
+    }
+
+    public Text CreateCellLabelT(Vector3 pos, WorldTile wTile, string text) {
+        Text label = Instantiate(cellLabelPrefab);
+        label.rectTransform.anchoredPosition = new Vector2(pos.x, pos.z);
+        Vector3 uiPos = label.rectTransform.localPosition;
+        uiPos.z = wTile.Elevation * -HexMetrics.elevationStep;
+        label.rectTransform.localPosition = uiPos;
+        label.text = text;
         return label;
     }
 

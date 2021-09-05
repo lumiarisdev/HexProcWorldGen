@@ -666,8 +666,10 @@ namespace EconSim
             // y <
             // 
 
-            for(int x = 0; x < args.SizeX; x++) {
-                for(int z = 0; z < args.SizeZ; z++) {
+
+            // primary wind calculations
+            for(int z = 0; z < args.SizeZ; z++) {
+                for(int x = 0; x < args.SizeX; x++) {
                     var tile = CubeCoordinates.OffsetToCube(x, z);
                     var windCell = windCells[0];
                     for(int i = 1; i < windCells.Length; i++) {
@@ -678,17 +680,55 @@ namespace EconSim
                         }
                     }
                     var dir = 0;
-                    var mag = 0;
+                    var mag = 0f;
                     // south polar easterlies
                     if (windCell.Equals(windCells[0])) {
                         var t = Mathf.InverseLerp(windCells[0].ToOffset().z, windCells[1].ToOffset().z, z);
-                        dir = (int)Mathf.Lerp(dir, -270, t);
-                        mag = (int)(Mathf.InverseLerp(windCells[1].ToOffset().z, windCells[0].ToOffset().z, z) * 100f);
-                        wData.WindDict[tile] = new Tuple<int, float>(dir, mag);
+                        dir = (int)Mathf.Lerp(dir, -75, t);
+                        mag = Mathf.InverseLerp(windCells[1].ToOffset().z, windCells[0].ToOffset().z, z) * 100f;
+                        wData.WorldDict[tile].Wind = wData.WorldDict[tile].Wind = new Tuple<int, float>(dir, mag);
                     }
                     // southern westerlies
                     else if (windCell.Equals(windCells[1])) {
-                        
+                        dir = 180;
+                        var t = Mathf.InverseLerp(windCells[1].ToOffset().z, windCells[2].ToOffset().z, z);
+                        dir = (int)Mathf.Lerp(dir, 105, t);
+                        mag = Mathf.InverseLerp(windCells[1].ToOffset().z, windCells[2].ToOffset().z, z) * 100f;
+                        wData.WorldDict[tile].Wind = wData.WorldDict[tile].Wind = new Tuple<int, float>(dir, mag);
+                    }
+                    // Southeasterly trades
+                    else if(windCell.Equals(windCells[2])) {
+                        var t = Mathf.InverseLerp(windCells[2].ToOffset().z, windCells[3].ToOffset().z, z);
+                        dir = (int)Mathf.Lerp(dir, -75, t);
+                        var magT = Mathf.InverseLerp(windCells[3].ToOffset().z, windCells[2].ToOffset().z, z);
+                        mag = (int)Coserp(0f, 100f, magT);
+                        wData.WorldDict[tile].Wind = wData.WorldDict[tile].Wind = new Tuple<int, float>(dir, mag);
+                    }
+                    //northeasterly trades
+                    else if(windCell.Equals(windCells[3])) {
+                        var t = Mathf.InverseLerp(windCells[3].ToOffset().z, windCells[4].ToOffset().z, z);
+                        dir = 180;
+                        dir = (int)Mathf.Lerp(270, dir, t);
+                        mag = (int)Coserp(0f, 100f, t);
+                        wData.WorldDict[tile].Wind = wData.WorldDict[tile].Wind = new Tuple<int, float>(dir, mag);
+                    }
+                    // northern westerlies
+                    else if (windCell.Equals(windCells[4])) {
+                        var t = Mathf.InverseLerp(windCells[4].ToOffset().z, windCells[5].ToOffset().z, z);
+                        dir = (int)Mathf.Lerp(75, dir, t);
+                        mag = Mathf.InverseLerp(windCells[4].ToOffset().z, windCells[5].ToOffset().z, z) * 100f;
+                        wData.WorldDict[tile].Wind = wData.WorldDict[tile].Wind = new Tuple<int, float>(dir, mag);
+                    } // north polar easterlies
+                    else if (windCell.Equals(windCells[5])) {
+                        var t = Mathf.InverseLerp(windCells[5].ToOffset().z, args.SizeZ, z);
+                        dir = 180;
+                        dir = (int)Mathf.Lerp(270, dir, t);
+                        mag = t * 100f;
+                        wData.WorldDict[tile].Wind = wData.WorldDict[tile].Wind = new Tuple<int, float>(dir, mag);
+                    }
+                    else {
+                        wData.WindDict[tile] = new Tuple<int, float>(0, 0f);
+                        wData.WorldDict[tile].Wind = wData.WindDict[tile];
                     }
                 }
             }

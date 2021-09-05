@@ -26,6 +26,7 @@ namespace EconSim {
         public int Elevation;
         public float Temperature;
         public float Precipitation;
+        public Tuple<int, float> Wind;
         public CubeCoordinates PlateCoords;
 
         // public float Fertility;
