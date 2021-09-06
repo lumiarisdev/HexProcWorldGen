@@ -24,12 +24,12 @@ namespace EconSim
         public int Elevation;
         public int MinElevation {
             get {
-                return Oceanic ? -130 : 0;
+                return Oceanic ? -55 : 0;
             }
         }
         public int MaxElevation {
             get {
-                return 125;
+                return 50;
             }
         }
 

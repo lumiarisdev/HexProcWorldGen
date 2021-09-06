@@ -205,6 +205,14 @@ public class HexMap : MonoBehaviour {
                 hexMeshCells[tile.Coordinates].color = Color.Lerp(Color.blue, Color.red, (worldMap.worldData.WorldDict[tile.Coordinates].Temperature - -40f) / (30f - -40f));
             }
         }
+        else if (debugMode == DebugMode.Humidity) {
+            var t = Mathf.InverseLerp(0f, 100f, worldMap.worldData.WorldDict[tile.Coordinates].Humidity);
+            hexMeshCells[tile.Coordinates].color = Color.Lerp(Color.white, Color.blue, t);
+        }
+        else if (debugMode == DebugMode.Precipitation) {
+            var t = Mathf.InverseLerp(0f, WorldTile.MaxPrecipitation, worldMap.worldData.WorldDict[tile.Coordinates].Precipitation);
+            hexMeshCells[tile.Coordinates].color = Color.Lerp(Color.white, Color.blue, t);
+        }
 
         Vector3Int offset = tile.Coordinates.ToOffset();
         var width = 2f * HexMetrics.outerRadius;
@@ -218,6 +226,23 @@ public class HexMap : MonoBehaviour {
 
         // LABELS WILL NOT UPDATE
         // TODO: ADD LABEL UPDATES
+
+        // wind debug
+        if (debugMode == DebugMode.Wind) {
+            hexMeshCells[tile.Coordinates].label.text = worldMap.worldData.WorldDict[tile.Coordinates].Wind.Item1.ToString() + "\n" + worldMap.worldData.WorldDict[tile.Coordinates].Wind.Item2.ToString();
+        }
+        // temp debug
+        else if (debugMode == DebugMode.Temperature) {
+            hexMeshCells[tile.Coordinates].label.text = Mathf.Round(worldMap.worldData.WorldDict[tile.Coordinates].Temperature) + " C";
+        }
+        // humidity debug
+        else if (debugMode == DebugMode.Humidity) {
+            hexMeshCells[tile.Coordinates].label.text = Mathf.RoundToInt(worldMap.worldData.WorldDict[tile.Coordinates].Humidity).ToString();
+        }
+        // precipitation debug
+        else if (debugMode == DebugMode.Precipitation) {
+            hexMeshCells[tile.Coordinates].label.text = Mathf.RoundToInt(worldMap.worldData.WorldDict[tile.Coordinates].Precipitation).ToString();
+        }
 
         hexMeshCells[tile.Coordinates].Refresh();
     }
@@ -282,6 +307,14 @@ public class HexMap : MonoBehaviour {
                 cell.color = Color.Lerp(Color.blue, Color.red, (wTile.Temperature - -40f) / (30f - -40f));
             }
         }
+        else if(debugMode == DebugMode.Humidity) {
+            var t = Mathf.InverseLerp(0f, 100f, wTile.Humidity);
+            cell.color = Color.Lerp(Color.white, Color.blue, t);
+        }
+        else if(debugMode == DebugMode.Precipitation) {
+            var t = Mathf.InverseLerp(0f, WorldTile.MaxPrecipitation, wTile.Precipitation);
+            cell.color = Color.Lerp(Color.white, Color.blue, t);
+        }
 
         // water level, will need changes later
         cell.waterLevel = 0;
@@ -293,6 +326,24 @@ public class HexMap : MonoBehaviour {
         // wind debug
         if(debugMode == DebugMode.Wind) {
             cell.label = CreateCellLabelT(pos, wTile, wTile.Wind.Item1.ToString() + "\n" + wTile.Wind.Item2.ToString());
+        }
+        // temp debug
+        else if(debugMode == DebugMode.Temperature) {
+            cell.label = CreateCellLabelT(pos, wTile, Mathf.Round(wTile.Temperature) + " C");
+        }
+        // humidity debug
+        else if(debugMode == DebugMode.Humidity) {
+            cell.label = CreateCellLabelT(pos, wTile, Mathf.RoundToInt(wTile.Humidity).ToString());
+        }
+        // precipitation debug
+        else if(debugMode == DebugMode.Precipitation) {
+            cell.label = CreateCellLabelT(pos, wTile, Mathf.RoundToInt(wTile.Precipitation).ToString());
+        }
+
+        if(cell.IsUnderwater) {
+            Vector3 uiPos = cell.label.rectTransform.localPosition;
+            uiPos.z = 0;
+            cell.label.rectTransform.localPosition = uiPos;
         }
 
         return cell;

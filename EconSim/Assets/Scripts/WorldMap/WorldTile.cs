@@ -21,13 +21,38 @@ namespace EconSim {
 
     public class WorldTile {
 
+        public static float MaxPrecipitation = 0f;
+
         public CubeCoordinates Coordinates;
 
         public int Elevation;
         public float Temperature;
-        public float Precipitation;
+        public float Humidity;
+        float precipitation;
+        public float Precipitation {
+            get {
+                return precipitation;
+            }
+            set {
+                precipitation = value;
+                if(value > MaxPrecipitation && !IsUnderwater) {
+                    MaxPrecipitation = value;
+                }
+            }
+        }
         public Tuple<int, float> Wind;
         public CubeCoordinates PlateCoords;
+        public bool IsUnderwater {
+            get {
+                return Elevation <= 0;
+            }
+        }
+        public float MaxHumidity {
+            get {
+                var t = Mathf.InverseLerp(-40f, 30f, Temperature);
+                return IsUnderwater ? 300f * (1f + Mathf.Lerp(-0.3f, 0.4f, t)) : 100f * (1f + Mathf.Lerp(-0.3f, 0.4f, t));
+            }
+        }
 
         // public float Fertility;
         public TerrainType Terrain;

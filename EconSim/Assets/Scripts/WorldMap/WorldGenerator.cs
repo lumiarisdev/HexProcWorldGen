@@ -141,7 +141,7 @@ namespace EconSim
             UnityEngine.Random.InitState(args.WorldSeed);
         }
 
-        // OLD GENERATE METHOD
+        // OLD GENERATE METHOD -- still in use
         public WorldMapData GenerateWorld() {
 
             var wData = new WorldMapData();
@@ -167,6 +167,9 @@ namespace EconSim
                     };
                 }
             }
+
+            // PROFILING
+            Debug.Log(Time.realtimeSinceStartup.ToString() + ": Tiles Created.");
 
             /*
              * PLATE TECTONICS
@@ -229,6 +232,9 @@ namespace EconSim
 
             }
 
+            // PROFILING
+            Debug.Log(Time.realtimeSinceStartup.ToString() + ": Plates Created (flood fill).");
+
             // this is the supplimentary check
             /*
              * This needs to be more robust. Doing the supplimentary assignment based only off of distance creates
@@ -280,6 +286,9 @@ namespace EconSim
                 } 
             }
 
+            // PROFILING
+            Debug.Log(Time.realtimeSinceStartup.ToString() + ": Supplimentary Plate/Tile Assignment Complete.");
+
             // find plate boundaries
             /*
              * First, start at the plate origin. Move north until you reach a tile who's northern neighbor
@@ -308,16 +317,19 @@ namespace EconSim
                 }
             }
 
+            // PROFILING
+            Debug.Log(Time.realtimeSinceStartup.ToString() + ": Plate Boundaries Calculated.");
+
             // generate random desired elevations for plates
             // also generate plate motion
             foreach (WorldPlate plate in wData.PlateDict.Values) {
 
                 // desired elevation
                 if (plate.Oceanic) {
-                    plate.DesiredElevation = UnityEngine.Random.Range(-45, -1);
+                    plate.DesiredElevation = UnityEngine.Random.Range(-15, -5);
                 }
                 else {
-                    plate.DesiredElevation = UnityEngine.Random.Range(4, 40);
+                    plate.DesiredElevation = UnityEngine.Random.Range(3, 15);
                 }
 
                 // plate motion
@@ -341,6 +353,9 @@ namespace EconSim
                 wData.WorldDict[plate.Origin].MotionVector = new Tuple<CubeCoordinates, CubeCoordinates>(plate.Origin, CubeCoordinates.Lerp(plate.Origin, plate.DriftAxis, args.PlateMotionScaleFactor));
 
             }
+
+            // PROFILING
+            Debug.Log(Time.realtimeSinceStartup.ToString() + ": Plate Motion Generated.");
 
             // calculate elevations for boundary tiles based on plate motions
             /*
@@ -549,18 +564,21 @@ namespace EconSim
 
             }
 
+            // PROFILING
+            Debug.Log(Time.realtimeSinceStartup.ToString() + ": Elevations Calculated.");
+
             // for the visuals
             foreach (WorldTile tile in wData.WorldDict.Values) {
                 //if (tile.Elevation < 0) {
                 //    tile.Terrain = TerrainType.Ocean;
                 //}
-                if (tile.Elevation > 64) {
+                if (tile.Elevation > 22) {
                     tile.Terrain = TerrainType.Mountain;
                 }
-                else if (tile.Elevation > 46 && tile.Elevation <= 64) {
+                else if (tile.Elevation > 15 && tile.Elevation <= 22) {
                     tile.Terrain = TerrainType.Hill;
                 }
-                else if (tile.Elevation > 4 && tile.Elevation <= 46) {
+                else if (tile.Elevation > 2 && tile.Elevation <= 15) {
                     tile.Terrain = TerrainType.Land;
                 }
                 else {
@@ -601,11 +619,14 @@ namespace EconSim
                 current.z--;
             }
 
+            // PROFILING
+            Debug.Log(Time.realtimeSinceStartup.ToString() + ": Equator Calculated.");
+
             /*
              * Assign temperatures for all tiles based on distance from the equator as well as elevation.
              */
 
-            foreach(CubeCoordinates tile in wData.WorldDict.Keys) {
+            foreach (CubeCoordinates tile in wData.WorldDict.Keys) {
                 if(!wData.TempDict.TryGetValue(tile, out float _)) {
                     var closestEqTile = equator[0];
                     foreach(CubeCoordinates eq in equator) {
@@ -622,19 +643,23 @@ namespace EconSim
                 }
             }
 
+            // elevation
             // a seed: 8319346
             foreach (CubeCoordinates tile in wData.TempDict.Keys) {
                 var el = wData.WorldDict[tile].Elevation;
                 // elevation should be able to drop the temp by about -20 to -40 degrees
                 // so, as el gets closer to maxEl, we drop the temperature further, on some kind of exponential curve
-                if(el > 46) {
+                if(el > 18) {
                     var tempChange = Mathf.Lerp(-40f, 0f, Mathf.Pow(args.TemperatureDecayElevation, el - 9));
                     wData.WorldDict[tile].Temperature = wData.WorldDict[tile].Temperature + tempChange;
-                } else if (el < -46) {
+                } else if (el < -10) {
                     var tempChange = Mathf.Lerp(-7.5f, 0f, Mathf.Pow(args.TemperatureDecayElevation-1, Mathf.Abs(el)));
                     wData.WorldDict[tile].Temperature = wData.WorldDict[tile].Temperature + tempChange;
                 }
             }
+
+            // PROFILING
+            Debug.Log(Time.realtimeSinceStartup.ToString() + ": Initial Temperature Assigned.");
 
             /*
              * It's wind time, this should be fun
@@ -654,20 +679,9 @@ namespace EconSim
                 new CubeCoordinates(0, 4*WindCellSize.y,  4*WindCellSize.z),
                 new CubeCoordinates(0, 5*WindCellSize.y,  5*WindCellSize.z),
             };
-            // uncomment to assign wind to the cell tiles, for debugging
-            //foreach(CubeCoordinates cell in windCells) {
-            //    wData.WindDict[cell] = new Vector3((Mathf.InverseLerp(windCells[0].z, windCells[1].z, cell.z) * -2f) + CubeCoordinates.Permutations[0].x,
-            //            (Mathf.InverseLerp(windCells[0].z, windCells[1].z, cell.z) * 1f) + CubeCoordinates.Permutations[0].y,
-            //          (Mathf.InverseLerp(windCells[0].z, windCells[1].z, cell.z) * 1f) + CubeCoordinates.Permutations[0].z
-            //        );
-            //}
-
-            // x >=
-            // y <
-            // 
-
 
             // primary wind calculations
+            var magnitudeMult = 1.0f;
             for(int z = 0; z < args.SizeZ; z++) {
                 for(int x = 0; x < args.SizeX; x++) {
                     var tile = CubeCoordinates.OffsetToCube(x, z);
@@ -685,74 +699,318 @@ namespace EconSim
                     if (windCell.Equals(windCells[0])) {
                         var t = Mathf.InverseLerp(windCells[0].ToOffset().z, windCells[1].ToOffset().z, z);
                         dir = (int)Mathf.Lerp(dir, -75, t);
-                        mag = Mathf.InverseLerp(windCells[1].ToOffset().z, windCells[0].ToOffset().z, z) * 100f;
-                        wData.WorldDict[tile].Wind = wData.WorldDict[tile].Wind = new Tuple<int, float>(dir, mag);
+                        mag = Mathf.InverseLerp(windCells[1].ToOffset().z, windCells[0].ToOffset().z, z) * 100f * magnitudeMult;
                     }
                     // southern westerlies
                     else if (windCell.Equals(windCells[1])) {
                         dir = 180;
                         var t = Mathf.InverseLerp(windCells[1].ToOffset().z, windCells[2].ToOffset().z, z);
                         dir = (int)Mathf.Lerp(dir, 105, t);
-                        mag = Mathf.InverseLerp(windCells[1].ToOffset().z, windCells[2].ToOffset().z, z) * 100f;
-                        wData.WorldDict[tile].Wind = wData.WorldDict[tile].Wind = new Tuple<int, float>(dir, mag);
+                        mag = Mathf.InverseLerp(windCells[1].ToOffset().z, windCells[2].ToOffset().z, z) * 100f * magnitudeMult;
                     }
                     // Southeasterly trades
                     else if(windCell.Equals(windCells[2])) {
                         var t = Mathf.InverseLerp(windCells[2].ToOffset().z, windCells[3].ToOffset().z, z);
                         dir = (int)Mathf.Lerp(dir, -75, t);
                         var magT = Mathf.InverseLerp(windCells[3].ToOffset().z, windCells[2].ToOffset().z, z);
-                        mag = (int)Coserp(0f, 100f, magT);
-                        wData.WorldDict[tile].Wind = wData.WorldDict[tile].Wind = new Tuple<int, float>(dir, mag);
+                        mag = Coserp(0f, 100f, magT) * magnitudeMult;
                     }
                     //northeasterly trades
                     else if(windCell.Equals(windCells[3])) {
                         var t = Mathf.InverseLerp(windCells[3].ToOffset().z, windCells[4].ToOffset().z, z);
                         dir = 180;
                         dir = (int)Mathf.Lerp(270, dir, t);
-                        mag = (int)Coserp(0f, 100f, t);
-                        wData.WorldDict[tile].Wind = wData.WorldDict[tile].Wind = new Tuple<int, float>(dir, mag);
+                        mag = Coserp(0f, 100f, t) * magnitudeMult;
                     }
                     // northern westerlies
                     else if (windCell.Equals(windCells[4])) {
                         var t = Mathf.InverseLerp(windCells[4].ToOffset().z, windCells[5].ToOffset().z, z);
                         dir = (int)Mathf.Lerp(75, dir, t);
-                        mag = Mathf.InverseLerp(windCells[4].ToOffset().z, windCells[5].ToOffset().z, z) * 100f;
-                        wData.WorldDict[tile].Wind = wData.WorldDict[tile].Wind = new Tuple<int, float>(dir, mag);
+                        mag = Mathf.InverseLerp(windCells[4].ToOffset().z, windCells[5].ToOffset().z, z) * 100f * magnitudeMult;
                     } // north polar easterlies
                     else if (windCell.Equals(windCells[5])) {
                         var t = Mathf.InverseLerp(windCells[5].ToOffset().z, args.SizeZ, z);
                         dir = 180;
                         dir = (int)Mathf.Lerp(270, dir, t);
-                        mag = t * 100f;
-                        wData.WorldDict[tile].Wind = wData.WorldDict[tile].Wind = new Tuple<int, float>(dir, mag);
+                        mag = t * 100f * magnitudeMult;
                     }
                     else {
                         wData.WindDict[tile] = new Tuple<int, float>(0, 0f);
                         wData.WorldDict[tile].Wind = wData.WindDict[tile];
                     }
+
+                    // modify the wind speed based on elevation
+                    var el = wData.WorldDict[tile].Elevation;
+                    var mod = 0f;
+                    if (el < 0) el = 0;
+                    if (el < 4) {
+                        mod = 1.3f;
+                    }
+                    else if (el < 20) {
+                        mod = 1f + Mathf.InverseLerp(4, 19, el)/2;
+                    }
+                    else {
+                        mod = 1.5f + Mathf.InverseLerp(20, 40, el);
+                    }
+                    mag *= mod;
+                    wData.WorldDict[tile].Wind = wData.WorldDict[tile].Wind = new Tuple<int, float>(dir, (int)mag);
                 }
             }
 
-            //foreach (CubeCoordinates tile in wData.WorldDict.Keys) {
-            //    // determine wind cell
-            //    var windCell = windCells[0];
-            //    for (int i = 1; i < windCells.Length; i++) {
-            //        if ((windCells[i].x <= tile.x && windCells[i].y > tile.y)) {
-            //            windCell = windCells[i];
-            //        }
-            //    }
-            //    // wind for wind cell 0
-            //    if (windCell.Equals(windCells[0])) {
-            //        var windDirection = new Vector3(
-            //            (Mathf.InverseLerp(windCells[0].z, windCells[1].z, tile.z) * -2f) + CubeCoordinates.Permutations[0].x,
-            //            (Mathf.InverseLerp(windCells[0].z, windCells[1].z, tile.z) * 1f) + CubeCoordinates.Permutations[0].y,
-            //            (Mathf.InverseLerp(windCells[0].z, windCells[1].z, tile.z) * 1f) + CubeCoordinates.Permutations[0].z
-            //            );
-            //        var windMag = Mathf.InverseLerp(windCells[1].z, windCells[0].z, tile.z) * 100f;
-            //        var wind = windDirection; // * windMag;
-            //        wData.WindDict[tile] = wind;
-            //    }
-            //}
+            // PROFILING
+            Debug.Log(Time.realtimeSinceStartup.ToString() + ": Wind Patterns Created.");
+
+            // Create initial humidity map, based on tempature and water
+            foreach(CubeCoordinates tile in wData.WorldDict.Keys) {
+                if(wData.WorldDict[tile].IsUnderwater) {
+                    var t = Mathf.InverseLerp(-10, 30, wData.WorldDict[tile].Temperature);
+                    wData.WorldDict[tile].Humidity = Coserp(0f, 50f, t);
+                } else {
+                    var t = Mathf.InverseLerp(-10, 30, wData.WorldDict[tile].Temperature);
+                    wData.WorldDict[tile].Humidity = Coserp(2.5f, 10f, t);
+                }
+            }
+
+            // PROFILING
+            Debug.Log(Time.realtimeSinceStartup.ToString() + ": Humidity Created.");
+
+            // use wind to move humidity and temperature around
+
+            var passes = 50;
+            for (int i = 0; i < passes; i++) {
+
+                if (i < 35) {
+                    foreach (CubeCoordinates tile in wData.WorldDict.Keys) {
+                        if (wData.WorldDict[tile].IsUnderwater) {
+                            var t = Mathf.InverseLerp(-10, 30, wData.WorldDict[tile].Temperature);
+                            wData.WorldDict[tile].Humidity += Coserp(0f, 15f, t);
+                        }
+                    }
+                }
+
+                foreach (CubeCoordinates tile in wData.WorldDict.Keys) {
+                    if(wData.WorldDict[tile].Humidity > wData.WorldDict[tile].MaxHumidity) {
+                        wData.WorldDict[tile].Precipitation += wData.WorldDict[tile].Humidity * 0.25f;
+                        wData.WorldDict[tile].Humidity -= wData.WorldDict[tile].Humidity * 0.25f;
+                    }
+                    var dir = wData.WorldDict[tile].Wind.Item1;
+                    var mag = wData.WorldDict[tile].Wind.Item2;
+                    if(mag < 0.2f) {
+                        mag = 0.2f;
+                    }
+                    if (mag > 0) {
+                        var tempChange = (mag / 100) * 0.1f * wData.WorldDict[tile].Temperature;
+                        var humidityChange = wData.WorldDict[tile].Humidity > wData.WorldDict[tile].MaxHumidity * 1.35f ? 
+                            (wData.WorldDict[tile].Humidity - wData.WorldDict[tile].MaxHumidity) + (mag / 100f) * 0.45f * wData.WorldDict[tile].Humidity : (mag / 100f) * 0.65f * wData.WorldDict[tile].Humidity;
+                        wData.WorldDict[tile].Temperature -= tempChange;
+                        wData.WorldDict[tile].Humidity -= humidityChange;
+                        if (dir >= -90 && dir < -45) {
+                            // determine how much to push where
+                            var nw = 0.5f;
+                            var t = Mathf.InverseLerp(-90, -45, dir);
+                            nw += Mathf.Lerp(0f, 0.5f, t);
+                            var sw = 1 - nw;
+                            var tcNW = nw * tempChange;
+                            var tcSW = sw * tempChange;
+                            var hcNW = nw * humidityChange;
+                            var hcSW = sw * humidityChange;
+                            // push temp and humidity
+                            if (wData.WorldDict.TryGetValue(tile.GetNeighbor(HexDirection.NW), out WorldTile _)) {
+                                wData.WorldDict[tile.GetNeighbor(HexDirection.NW)].Temperature += tcNW;
+                                wData.WorldDict[tile.GetNeighbor(HexDirection.NW)].Humidity += hcNW;
+                            }
+                            if (wData.WorldDict.TryGetValue(tile.GetNeighbor(HexDirection.SW), out WorldTile _)) {
+                                wData.WorldDict[tile.GetNeighbor(HexDirection.SW)].Temperature += tcSW;
+                                wData.WorldDict[tile.GetNeighbor(HexDirection.SW)].Humidity += hcSW;
+                            }
+                        }
+                        else if (dir >= -45 && dir < 0) {
+                            var nw = Mathf.InverseLerp(0, -45, dir);
+                            var n = Mathf.InverseLerp(-45, 0, dir);
+                            var tcNW = nw * tempChange;
+                            var tcN = n * tempChange;
+                            var hcNW = nw * humidityChange;
+                            var hcN = n * humidityChange;
+                            if (wData.WorldDict.TryGetValue(tile.GetNeighbor(HexDirection.NW), out WorldTile _)) {
+                                wData.WorldDict[tile.GetNeighbor(HexDirection.NW)].Temperature += tcNW;
+                                wData.WorldDict[tile.GetNeighbor(HexDirection.NW)].Humidity += hcNW;
+                            }
+                            if (wData.WorldDict.TryGetValue(tile.GetNeighbor(HexDirection.N), out WorldTile _)) {
+                                wData.WorldDict[tile.GetNeighbor(HexDirection.N)].Temperature += tcN;
+                                wData.WorldDict[tile.GetNeighbor(HexDirection.N)].Humidity += hcN;
+                            }
+                        }
+                        else if (dir >= 0 && dir < 45) {
+                            var ne = Mathf.InverseLerp(0, 45, dir);
+                            var n = Mathf.InverseLerp(45, 0, dir);
+                            var tcNE = ne * tempChange;
+                            var tcN = n * tempChange;
+                            var hcNE = ne * humidityChange;
+                            var hcN = n * humidityChange;
+                            if (wData.WorldDict.TryGetValue(tile.GetNeighbor(HexDirection.NE), out WorldTile _)) {
+                                wData.WorldDict[tile.GetNeighbor(HexDirection.NE)].Temperature += tcNE;
+                                wData.WorldDict[tile.GetNeighbor(HexDirection.NE)].Humidity += hcNE;
+                            }
+                            if (wData.WorldDict.TryGetValue(tile.GetNeighbor(HexDirection.N), out WorldTile _)) {
+                                wData.WorldDict[tile.GetNeighbor(HexDirection.N)].Temperature += tcN;
+                                wData.WorldDict[tile.GetNeighbor(HexDirection.N)].Humidity += hcN;
+                            }
+                        }
+                        else if (dir >= 45 && dir < 90) {
+                            // determine how much to push where
+                            var ne = 1f;
+                            var t = Mathf.InverseLerp(45, 90, dir);
+                            ne -= Mathf.Lerp(0f, 0.5f, t);
+                            var se = 1 - ne;
+                            var tcNE = ne * tempChange;
+                            var tcSE = se * tempChange;
+                            var hcNE = ne * humidityChange;
+                            var hcSE = se * humidityChange;
+                            // push temp and humidity
+                            if (wData.WorldDict.TryGetValue(tile.GetNeighbor(HexDirection.NE), out WorldTile _)) {
+                                wData.WorldDict[tile.GetNeighbor(HexDirection.NE)].Temperature += tcNE;
+                                wData.WorldDict[tile.GetNeighbor(HexDirection.NE)].Humidity += hcNE;
+                            }
+                            if (wData.WorldDict.TryGetValue(tile.GetNeighbor(HexDirection.SE), out WorldTile _)) {
+                                wData.WorldDict[tile.GetNeighbor(HexDirection.SE)].Temperature += tcSE;
+                                wData.WorldDict[tile.GetNeighbor(HexDirection.SE)].Humidity += hcSE;
+                            }
+                        }
+                        else if (dir >= 90 && dir < 135) {
+                            // determine how much to push where
+                            var ne = 0.5f;
+                            var t = Mathf.InverseLerp(90, 135, dir);
+                            ne -= Mathf.Lerp(0f, 0.5f, t);
+                            var se = 1 - ne;
+                            var tcNE = ne * tempChange;
+                            var tcSE = se * tempChange;
+                            var hcNE = ne * humidityChange;
+                            var hcSE = se * humidityChange;
+                            // push temp and humidity
+                            if (wData.WorldDict.TryGetValue(tile.GetNeighbor(HexDirection.NE), out WorldTile _)) {
+                                wData.WorldDict[tile.GetNeighbor(HexDirection.NE)].Temperature += tcNE;
+                                wData.WorldDict[tile.GetNeighbor(HexDirection.NE)].Humidity += hcNE;
+                            }
+                            if (wData.WorldDict.TryGetValue(tile.GetNeighbor(HexDirection.SE), out WorldTile _)) {
+                                wData.WorldDict[tile.GetNeighbor(HexDirection.SE)].Temperature += tcSE;
+                                wData.WorldDict[tile.GetNeighbor(HexDirection.SE)].Humidity += hcSE;
+                            }
+                        }
+                        else if (dir >= 135 && dir < 180) {
+                            var se = Mathf.InverseLerp(180, 135, dir);
+                            var s = Mathf.InverseLerp(135, 180, dir);
+                            var tcSE = se * tempChange;
+                            var tcS = s * tempChange;
+                            var hcSE = se * humidityChange;
+                            var hcS = s * humidityChange;
+                            if (wData.WorldDict.TryGetValue(tile.GetNeighbor(HexDirection.SE), out WorldTile _)) {
+                                wData.WorldDict[tile.GetNeighbor(HexDirection.SE)].Temperature += tcSE;
+                                wData.WorldDict[tile.GetNeighbor(HexDirection.SE)].Humidity += hcSE;
+                            }
+                            if (wData.WorldDict.TryGetValue(tile.GetNeighbor(HexDirection.S), out WorldTile _)) {
+                                wData.WorldDict[tile.GetNeighbor(HexDirection.S)].Temperature += tcS;
+                                wData.WorldDict[tile.GetNeighbor(HexDirection.S)].Humidity += hcS;
+                            }
+                        }
+                        else if (dir >= 180 && dir < 225) {
+                            var s = Mathf.InverseLerp(225, 180, dir);
+                            var sw = Mathf.InverseLerp(180, 225, dir);
+                            var tcSW = sw * tempChange;
+                            var tcS = s * tempChange;
+                            var hcSW = sw * humidityChange;
+                            var hcS = s * humidityChange;
+                            if (wData.WorldDict.TryGetValue(tile.GetNeighbor(HexDirection.SW), out WorldTile _)) {
+                                wData.WorldDict[tile.GetNeighbor(HexDirection.SW)].Temperature += tcSW;
+                                wData.WorldDict[tile.GetNeighbor(HexDirection.SW)].Humidity += hcSW;
+                            }
+                            if (wData.WorldDict.TryGetValue(tile.GetNeighbor(HexDirection.S), out WorldTile _)) {
+                                wData.WorldDict[tile.GetNeighbor(HexDirection.S)].Temperature += tcS;
+                                wData.WorldDict[tile.GetNeighbor(HexDirection.S)].Humidity += hcS;
+                            }
+                        }
+                        else if (dir >= 225 && dir < 270) {
+                            var t = Mathf.InverseLerp(225, 270, dir);
+                            var sw = Mathf.Lerp(1, 0.5f, t);
+                            var nw = 1 - sw;
+                            var tcNW = nw * tempChange;
+                            var tcSW = sw * tempChange;
+                            var hcNW = nw * humidityChange;
+                            var hcSW = sw * humidityChange;
+                            if (wData.WorldDict.TryGetValue(tile.GetNeighbor(HexDirection.NW), out WorldTile _)) {
+                                wData.WorldDict[tile.GetNeighbor(HexDirection.NW)].Temperature += tcNW;
+                                wData.WorldDict[tile.GetNeighbor(HexDirection.NW)].Humidity += hcNW;
+                            }
+                            if (wData.WorldDict.TryGetValue(tile.GetNeighbor(HexDirection.SW), out WorldTile _)) {
+                                wData.WorldDict[tile.GetNeighbor(HexDirection.SW)].Temperature += tcSW;
+                                wData.WorldDict[tile.GetNeighbor(HexDirection.SW)].Humidity += hcSW;
+                            }
+                        }
+                        else if (dir >= 270) {
+                            var sw = 0.5f;
+                            var nw = 0.5f;
+                            var tcNW = nw * tempChange;
+                            var tcSW = sw * tempChange;
+                            var hcNW = nw * humidityChange;
+                            var hcSW = sw * humidityChange;
+                            if (wData.WorldDict.TryGetValue(tile.GetNeighbor(HexDirection.NW), out WorldTile _)) {
+                                wData.WorldDict[tile.GetNeighbor(HexDirection.NW)].Temperature += tcNW;
+                                wData.WorldDict[tile.GetNeighbor(HexDirection.NW)].Humidity += hcNW;
+                            }
+                            if (wData.WorldDict.TryGetValue(tile.GetNeighbor(HexDirection.SW), out WorldTile _)) {
+                                wData.WorldDict[tile.GetNeighbor(HexDirection.SW)].Temperature += tcSW;
+                                wData.WorldDict[tile.GetNeighbor(HexDirection.SW)].Humidity += hcSW;
+                            }
+                        }
+                    }
+                }
+
+                // humidity smoothing
+                foreach (CubeCoordinates tile in wData.WorldDict.Keys) {
+                    var smoothedHumidity = wData.WorldDict[tile].Humidity;
+                    var smoothing = 1;
+                    for (HexDirection d = HexDirection.N; d <= HexDirection.NW; d++) {
+                        if (wData.WorldDict.TryGetValue(tile.GetNeighbor(d), out WorldTile wt)) {
+                            smoothedHumidity += wt.Humidity;
+                            smoothing++;
+                        }
+                    }
+                    smoothedHumidity /= smoothing;
+                    wData.WorldDict[tile].Humidity = smoothedHumidity;
+                }
+
+            }
+
+            // dump remaining humidity
+            foreach (CubeCoordinates tile in wData.WorldDict.Keys) { 
+                while(wData.WorldDict[tile].Humidity > wData.WorldDict[tile].MaxHumidity) {
+                    wData.WorldDict[tile].Precipitation += wData.WorldDict[tile].Humidity * 0.25f;
+                    wData.WorldDict[tile].Humidity *= 0.75f;
+                }
+            }
+
+            // PROFILING
+            Debug.Log(Time.realtimeSinceStartup.ToString() + ": Final Wind/Temp/Humidity + Interactions Complete.");
+            Debug.Log(Time.realtimeSinceStartup.ToString() + ": Precipitation Calculated.");
+
+            // precipitation smoothing
+            passes = 3;
+            for (int i = 0; i < passes; i++) {
+                foreach (CubeCoordinates tile in wData.WorldDict.Keys) {
+                    var smoothedPre = wData.WorldDict[tile].Precipitation;
+                    var smoothing = 1;
+                    for (HexDirection d = HexDirection.N; d <= HexDirection.NW; d++) {
+                        if (wData.WorldDict.TryGetValue(tile.GetNeighbor(d), out WorldTile wt)) {
+                            smoothedPre += wt.Precipitation;
+                            smoothing++;
+                        }
+                    }
+                    smoothedPre /= smoothing;
+                    wData.WorldDict[tile].Precipitation = smoothedPre;
+                }
+            }
+
+            // PROFILING
+            Debug.Log(Time.realtimeSinceStartup.ToString() + ": Precipitation Smoothing Complete.");
 
             return wData;
 
