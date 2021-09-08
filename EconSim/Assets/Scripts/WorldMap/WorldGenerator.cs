@@ -709,14 +709,14 @@ namespace EconSim
                         mag = Mathf.InverseLerp(windCells[1].ToOffset().z, windCells[2].ToOffset().z, z) * 100f * magnitudeMult;
                     }
                     // Southeasterly trades
-                    else if(windCell.Equals(windCells[2])) {
+                    else if (windCell.Equals(windCells[2])) {
                         var t = Mathf.InverseLerp(windCells[2].ToOffset().z, windCells[3].ToOffset().z, z);
                         dir = (int)Mathf.Lerp(dir, -75, t);
                         var magT = Mathf.InverseLerp(windCells[3].ToOffset().z, windCells[2].ToOffset().z, z);
                         mag = Coserp(0f, 100f, magT) * magnitudeMult;
                     }
                     //northeasterly trades
-                    else if(windCell.Equals(windCells[3])) {
+                    else if (windCell.Equals(windCells[3])) {
                         var t = Mathf.InverseLerp(windCells[3].ToOffset().z, windCells[4].ToOffset().z, z);
                         dir = 180;
                         dir = (int)Mathf.Lerp(270, dir, t);
@@ -752,8 +752,10 @@ namespace EconSim
                     else {
                         mod = 1.5f + Mathf.InverseLerp(20, 40, el);
                     }
-                    mag *= mod;
-                    wData.WorldDict[tile].Wind = wData.WorldDict[tile].Wind = new Tuple<int, float>(dir, (int)mag);
+                    if(mod != 0f) {
+                        mag *= mod;
+                    }
+                    wData.WorldDict[tile].Wind = wData.WorldDict[tile].Wind = new Tuple<int, float>(dir, mag);
                 }
             }
 

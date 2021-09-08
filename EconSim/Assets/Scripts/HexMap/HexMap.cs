@@ -46,6 +46,7 @@ public class HexMap : MonoBehaviour {
 
     static Dictionary<CubeCoordinates, HexMeshCell> hexMeshCells = new Dictionary<CubeCoordinates, HexMeshCell>();
     WorldMap worldMap;
+    static Dictionary<CubeCoordinates, LineRenderer> windVectors;
 
     public Texture2D noiseSource; // source for our vertex perturbation noise
 
@@ -57,6 +58,7 @@ public class HexMap : MonoBehaviour {
 
         HexMetrics.noiseSource = noiseSource;
 
+        windVectors = new Dictionary<CubeCoordinates, LineRenderer>();
         worldMap = GetComponent<WorldMap>();
 
         //hexMeshCells = new Dictionary<CubeCoordinates, HexMeshCell>();
@@ -106,40 +108,40 @@ public class HexMap : MonoBehaviour {
 
     }
 
-    private void OnDrawGizmos() {
-        if (debugMode == DebugMode.Tectonics) {
-            foreach (WorldTile tile in worldMap.worldData.WorldDict.Values) {
-                if (tile.MotionVector != null) {
-                    Vector3 originWorldPos = CubeCoordinates.CubeToOffset(tile.MotionVector.Item1);
-                    originWorldPos.x *= (2f * HexMetrics.outerRadius * 0.75f);
-                    originWorldPos.y = tile.Elevation * HexMetrics.elevationStep;
-                    originWorldPos.z = (originWorldPos.z + (originWorldPos.x * 0.5f) - (originWorldPos.x / 2)) * (Mathf.Sqrt(3) * HexMetrics.outerRadius);
-                    Vector3 driftWorldPos = CubeCoordinates.CubeToOffset(tile.MotionVector.Item2);
-                    driftWorldPos.x *= (2f * HexMetrics.outerRadius * 0.75f);
-                    driftWorldPos.y = tile.Elevation * HexMetrics.elevationStep;
-                    driftWorldPos.z = (driftWorldPos.z + (driftWorldPos.x * 0.5f) - (driftWorldPos.x / 2)) * (Mathf.Sqrt(3) * HexMetrics.outerRadius);
-                    //var vWorldPos = driftWorldPos - originWorldPos;
-                    //vWorldPos *= 0.125f;
-                    //driftWorldPos = originWorldPos + vWorldPos;
-                    Gizmos.DrawLine(originWorldPos, driftWorldPos);
-                }
-            }
-        } else if (debugMode == DebugMode.Wind) {
-            foreach(CubeCoordinates tile in worldMap.worldData.WindDict.Keys) {
-                var origin = hexMeshCells[tile].transform.localPosition;
-                var length = HexMetrics.innerRadius * worldMap.worldData.WindDict[tile].Item2;
-                var dir = worldMap.worldData.WindDict[tile].Item1;
-                var dirRad = Mathf.PI / 180 * dir;
-                var end = new Vector3(
-                    origin.x + length * Mathf.Sin(dirRad),
-                    origin.y,
-                    origin.z + length * Mathf.Cos(dirRad));
+    //private void OnDrawGizmos() {
+    //    if (debugMode == DebugMode.Tectonics) {
+    //        foreach (WorldTile tile in worldMap.worldData.WorldDict.Values) {
+    //            if (tile.MotionVector != null) {
+    //                Vector3 originWorldPos = CubeCoordinates.CubeToOffset(tile.MotionVector.Item1);
+    //                originWorldPos.x *= (2f * HexMetrics.outerRadius * 0.75f);
+    //                originWorldPos.y = tile.Elevation * HexMetrics.elevationStep;
+    //                originWorldPos.z = (originWorldPos.z + (originWorldPos.x * 0.5f) - (originWorldPos.x / 2)) * (Mathf.Sqrt(3) * HexMetrics.outerRadius);
+    //                Vector3 driftWorldPos = CubeCoordinates.CubeToOffset(tile.MotionVector.Item2);
+    //                driftWorldPos.x *= (2f * HexMetrics.outerRadius * 0.75f);
+    //                driftWorldPos.y = tile.Elevation * HexMetrics.elevationStep;
+    //                driftWorldPos.z = (driftWorldPos.z + (driftWorldPos.x * 0.5f) - (driftWorldPos.x / 2)) * (Mathf.Sqrt(3) * HexMetrics.outerRadius);
+    //                //var vWorldPos = driftWorldPos - originWorldPos;
+    //                //vWorldPos *= 0.125f;
+    //                //driftWorldPos = originWorldPos + vWorldPos;
+    //                Gizmos.DrawLine(originWorldPos, driftWorldPos);
+    //            }
+    //        }
+    //    } else if (debugMode == DebugMode.Wind) {
+    //        foreach(CubeCoordinates tile in worldMap.worldData.WindDict.Keys) {
+    //            var origin = hexMeshCells[tile].transform.localPosition;
+    //            var length = HexMetrics.innerRadius * worldMap.worldData.WindDict[tile].Item2;
+    //            var dir = worldMap.worldData.WindDict[tile].Item1;
+    //            var dirRad = Mathf.PI / 180 * dir;
+    //            var end = new Vector3(
+    //                origin.x + length * Mathf.Sin(dirRad),
+    //                origin.y,
+    //                origin.z + length * Mathf.Cos(dirRad));
 
-                Gizmos.DrawLine(hexMeshCells[tile].transform.localPosition, end);
-                //Gizmos.DrawSphere(hexMeshCells[tile].transform.localPosition, HexMetrics.outerRadius/8);
-            }
-        }
-    }
+    //            Debug.DrawLine(origin, end);
+    //            //Gizmos.DrawSphere(hexMeshCells[tile].transform.localPosition, HexMetrics.outerRadius/8);
+    //        }
+    //    }
+    //}
 
     /*
      * Refresh the entire map
@@ -279,9 +281,35 @@ public class HexMap : MonoBehaviour {
         cell.coordinates = wTile.Coordinates;
 
         // initial coloring, based on debug modes and worldtile attributes
-        if (debugMode == DebugMode.None || debugMode == DebugMode.Wind) {
+        if (debugMode == DebugMode.None) {
             // normal terrain
             cell.color = colors[(int)wTile.Terrain];
+        }
+        else if(debugMode == DebugMode.Wind) {
+            
+            cell.color = Color.HSVToRGB(213.1f/360f, 0.2042f, 0.5569f);
+
+            // draw line for wind vector
+            windVectors[wTile.Coordinates] = cell.GetComponent<LineRenderer>();
+            windVectors[wTile.Coordinates].material = new Material(Shader.Find("Hidden/Internal-Colored"));
+            windVectors[wTile.Coordinates].startWidth = 0.7f;
+            windVectors[wTile.Coordinates].endWidth = 0.1f;
+            windVectors[wTile.Coordinates].startColor = Color.blue;
+            windVectors[wTile.Coordinates].endColor = Color.blue;
+            var dirRad = Mathf.PI / 180 * wTile.Wind.Item1;
+            var length = HexMetrics.innerRadius * (wTile.Wind.Item2 / 100f);
+            var start = pos;
+            if(wTile.IsUnderwater) {
+                start.y = 0;
+            }
+            start.y += 2;
+            var end = new Vector3(
+                    start.x + length * Mathf.Sin(dirRad),
+                    start.y,
+                    start.z + length * Mathf.Cos(dirRad));
+            windVectors[wTile.Coordinates].SetPosition(0, start);
+            windVectors[wTile.Coordinates].SetPosition(1, end);
+
         }
         else if (debugMode == DebugMode.Tectonics) {
             if(wTile.PlateCoords.Equals(wTile.Coordinates)) {
