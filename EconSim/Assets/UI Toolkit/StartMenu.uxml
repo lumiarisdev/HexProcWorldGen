@@ -1,0 +1,6 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <ui:VisualElement style="width: 50%; height: 50%; align-items: center; left: 25%; top: 25%; opacity: 1; background-color: rgba(118, 248, 136, 255);">
+        <ui:Label text="L-EMES v0.01" display-tooltip-when-elided="true" style="font-size: 56px; color: rgba(0, 0, 0, 255); -unity-font-style: bold; align-items: center; justify-content: flex-end; top: 25%;" />
+        <ui:Button text="Start" display-tooltip-when-elided="true" name="start-button" style="align-items: center; justify-content: flex-end; top: 30%; width: 25%; height: 25%; font-size: 24px;" />
+    </ui:VisualElement>
+</ui:UXML>

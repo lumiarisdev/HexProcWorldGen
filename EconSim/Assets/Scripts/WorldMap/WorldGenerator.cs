@@ -778,10 +778,10 @@ namespace EconSim
 
             // use wind to move humidity and temperature around
 
-            var passes = 50;
+            var passes = 20;
             for (int i = 0; i < passes; i++) {
 
-                if (i < 35) {
+                if (i < 15) {
                     foreach (CubeCoordinates tile in wData.WorldDict.Keys) {
                         if (wData.WorldDict[tile].IsUnderwater) {
                             var t = Mathf.InverseLerp(-10, 30, wData.WorldDict[tile].Temperature);
@@ -797,8 +797,8 @@ namespace EconSim
                     }
                     var dir = wData.WorldDict[tile].Wind.Item1;
                     var mag = wData.WorldDict[tile].Wind.Item2;
-                    if(mag < 0.2f) {
-                        mag = 0.2f;
+                    if(mag < 0.05f) {
+                        mag = 0.05f;
                     }
                     if (mag > 0) {
                         var tempChange = (mag / 100) * 0.1f * wData.WorldDict[tile].Temperature;

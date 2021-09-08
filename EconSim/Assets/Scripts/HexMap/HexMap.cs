@@ -108,41 +108,6 @@ public class HexMap : MonoBehaviour {
 
     }
 
-    //private void OnDrawGizmos() {
-    //    if (debugMode == DebugMode.Tectonics) {
-    //        foreach (WorldTile tile in worldMap.worldData.WorldDict.Values) {
-    //            if (tile.MotionVector != null) {
-    //                Vector3 originWorldPos = CubeCoordinates.CubeToOffset(tile.MotionVector.Item1);
-    //                originWorldPos.x *= (2f * HexMetrics.outerRadius * 0.75f);
-    //                originWorldPos.y = tile.Elevation * HexMetrics.elevationStep;
-    //                originWorldPos.z = (originWorldPos.z + (originWorldPos.x * 0.5f) - (originWorldPos.x / 2)) * (Mathf.Sqrt(3) * HexMetrics.outerRadius);
-    //                Vector3 driftWorldPos = CubeCoordinates.CubeToOffset(tile.MotionVector.Item2);
-    //                driftWorldPos.x *= (2f * HexMetrics.outerRadius * 0.75f);
-    //                driftWorldPos.y = tile.Elevation * HexMetrics.elevationStep;
-    //                driftWorldPos.z = (driftWorldPos.z + (driftWorldPos.x * 0.5f) - (driftWorldPos.x / 2)) * (Mathf.Sqrt(3) * HexMetrics.outerRadius);
-    //                //var vWorldPos = driftWorldPos - originWorldPos;
-    //                //vWorldPos *= 0.125f;
-    //                //driftWorldPos = originWorldPos + vWorldPos;
-    //                Gizmos.DrawLine(originWorldPos, driftWorldPos);
-    //            }
-    //        }
-    //    } else if (debugMode == DebugMode.Wind) {
-    //        foreach(CubeCoordinates tile in worldMap.worldData.WindDict.Keys) {
-    //            var origin = hexMeshCells[tile].transform.localPosition;
-    //            var length = HexMetrics.innerRadius * worldMap.worldData.WindDict[tile].Item2;
-    //            var dir = worldMap.worldData.WindDict[tile].Item1;
-    //            var dirRad = Mathf.PI / 180 * dir;
-    //            var end = new Vector3(
-    //                origin.x + length * Mathf.Sin(dirRad),
-    //                origin.y,
-    //                origin.z + length * Mathf.Cos(dirRad));
-
-    //            Debug.DrawLine(origin, end);
-    //            //Gizmos.DrawSphere(hexMeshCells[tile].transform.localPosition, HexMetrics.outerRadius/8);
-    //        }
-    //    }
-    //}
-
     /*
      * Refresh the entire map
      * 
@@ -178,9 +143,36 @@ public class HexMap : MonoBehaviour {
      * Update a cell based on the current state of its sister tile.
      */
     public void UpdateCell(WorldMapData wData, WorldTile tile) {
-        if (debugMode == DebugMode.None || debugMode == DebugMode.Wind) {
+
+        if (debugMode == DebugMode.None) {
             // normal terrain
             hexMeshCells[tile.Coordinates].color = colors[(int)tile.Terrain];
+        }
+        else if (debugMode == DebugMode.Wind) {
+
+            hexMeshCells[tile.Coordinates].color = Color.HSVToRGB(213.1f / 360f, 0.2042f, 0.5569f);
+
+            // draw line for wind vector
+            windVectors[tile.Coordinates] = hexMeshCells[tile.Coordinates].GetComponent<LineRenderer>();
+            windVectors[tile.Coordinates].material = new Material(Shader.Find("Hidden/Internal-Colored"));
+            windVectors[tile.Coordinates].startWidth = 0.7f;
+            windVectors[tile.Coordinates].endWidth = 0.1f;
+            windVectors[tile.Coordinates].startColor = Color.red;
+            windVectors[tile.Coordinates].endColor = Color.red;
+            var dirRad = Mathf.PI / 180 * tile.Wind.Item1;
+            var length = HexMetrics.innerRadius * (tile.Wind.Item2 / 100f);
+            var start = hexMeshCells[tile.Coordinates].transform.localPosition;
+            if (tile.IsUnderwater) {
+                start.y = 0;
+            }
+            start.y += 2;
+            var end = new Vector3(
+                    start.x + length * Mathf.Sin(dirRad),
+                    start.y,
+                    start.z + length * Mathf.Cos(dirRad));
+            windVectors[tile.Coordinates].SetPosition(0, start);
+            windVectors[tile.Coordinates].SetPosition(1, end);
+
         }
         else if (debugMode == DebugMode.Tectonics) {
             if (tile.PlateCoords.Equals(tile.Coordinates)) {
@@ -216,15 +208,15 @@ public class HexMap : MonoBehaviour {
             hexMeshCells[tile.Coordinates].color = Color.Lerp(Color.white, Color.blue, t);
         }
 
-        Vector3Int offset = tile.Coordinates.ToOffset();
-        var width = 2f * HexMetrics.outerRadius;
-        var height = Mathf.Sqrt(3) * HexMetrics.outerRadius;
-        Vector3 pos = new Vector3(
-            offset.x * (width * 0.75f),
-            worldMap.worldData.WorldDict[tile.Coordinates].Elevation * HexMetrics.elevationStep,
-            (offset.z + (offset.x * 0.5f) - (offset.x / 2)) * (height));
+        //Vector3Int offset = tile.Coordinates.ToOffset();
+        //var width = 2f * HexMetrics.outerRadius;
+        //var height = Mathf.Sqrt(3) * HexMetrics.outerRadius;
+        //Vector3 pos = new Vector3(
+        //    offset.x * (width * 0.75f),
+        //    worldMap.worldData.WorldDict[tile.Coordinates].Elevation * HexMetrics.elevationStep,
+        //    (offset.z + (offset.x * 0.5f) - (offset.x / 2)) * (height));
 
-        hexMeshCells[tile.Coordinates].transform.localPosition = pos;
+        //hexMeshCells[tile.Coordinates].transform.localPosition = pos;
 
         // LABELS WILL NOT UPDATE
         // TODO: ADD LABEL UPDATES
@@ -294,8 +286,8 @@ public class HexMap : MonoBehaviour {
             windVectors[wTile.Coordinates].material = new Material(Shader.Find("Hidden/Internal-Colored"));
             windVectors[wTile.Coordinates].startWidth = 0.7f;
             windVectors[wTile.Coordinates].endWidth = 0.1f;
-            windVectors[wTile.Coordinates].startColor = Color.blue;
-            windVectors[wTile.Coordinates].endColor = Color.blue;
+            windVectors[wTile.Coordinates].startColor = Color.red;
+            windVectors[wTile.Coordinates].endColor = Color.red;
             var dirRad = Mathf.PI / 180 * wTile.Wind.Item1;
             var length = HexMetrics.innerRadius * (wTile.Wind.Item2 / 100f);
             var start = pos;
