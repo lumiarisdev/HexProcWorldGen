@@ -567,24 +567,24 @@ namespace EconSim
             // PROFILING
             Debug.Log(Time.realtimeSinceStartup.ToString() + ": Elevations Calculated.");
 
-            // for the visuals
-            foreach (WorldTile tile in wData.WorldDict.Values) {
-                //if (tile.Elevation < 0) {
-                //    tile.Terrain = TerrainType.Ocean;
-                //}
-                if (tile.Elevation > 22) {
-                    tile.Terrain = TerrainType.Mountain;
-                }
-                else if (tile.Elevation > 15 && tile.Elevation <= 22) {
-                    tile.Terrain = TerrainType.Hill;
-                }
-                else if (tile.Elevation > 2 && tile.Elevation <= 15) {
-                    tile.Terrain = TerrainType.Land;
-                }
-                else {
-                    tile.Terrain = TerrainType.Sand;
-                }
-            }
+            //// for the visuals
+            //foreach (WorldTile tile in wData.WorldDict.Values) {
+            //    //if (tile.Elevation < 0) {
+            //    //    tile.Terrain = TerrainType.Ocean;
+            //    //}
+            //    if (tile.Elevation > 22) {
+            //        tile.Terrain = TerrainType.Mountain;
+            //    }
+            //    else if (tile.Elevation > 15 && tile.Elevation <= 22) {
+            //        tile.Terrain = TerrainType.Hill;
+            //    }
+            //    else if (tile.Elevation > 2 && tile.Elevation <= 15) {
+            //        tile.Terrain = TerrainType.Land;
+            //    }
+            //    else {
+            //        tile.Terrain = TerrainType.Sand;
+            //    }
+            //}
 
             /*
             * WEATHER
@@ -699,14 +699,16 @@ namespace EconSim
                     if (windCell.Equals(windCells[0])) {
                         var t = Mathf.InverseLerp(windCells[0].ToOffset().z, windCells[1].ToOffset().z, z);
                         dir = (int)Mathf.Lerp(dir, -75, t);
-                        mag = Mathf.InverseLerp(windCells[1].ToOffset().z, windCells[0].ToOffset().z, z) * 100f * magnitudeMult;
+                        var magT = Mathf.InverseLerp(windCells[1].ToOffset().z, windCells[0].ToOffset().z, z);
+                        mag = Coserp(0, 100, magT) * magnitudeMult;
                     }
                     // southern westerlies
                     else if (windCell.Equals(windCells[1])) {
                         dir = 180;
                         var t = Mathf.InverseLerp(windCells[1].ToOffset().z, windCells[2].ToOffset().z, z);
                         dir = (int)Mathf.Lerp(dir, 105, t);
-                        mag = Mathf.InverseLerp(windCells[1].ToOffset().z, windCells[2].ToOffset().z, z) * 100f * magnitudeMult;
+                        var magT = Mathf.InverseLerp(windCells[1].ToOffset().z, windCells[2].ToOffset().z, z);
+                        mag = Coserp(0, 100, magT) * magnitudeMult;
                     }
                     // Southeasterly trades
                     else if (windCell.Equals(windCells[2])) {
@@ -726,13 +728,14 @@ namespace EconSim
                     else if (windCell.Equals(windCells[4])) {
                         var t = Mathf.InverseLerp(windCells[4].ToOffset().z, windCells[5].ToOffset().z, z);
                         dir = (int)Mathf.Lerp(75, dir, t);
-                        mag = Mathf.InverseLerp(windCells[4].ToOffset().z, windCells[5].ToOffset().z, z) * 100f * magnitudeMult;
+                        var magT = Mathf.InverseLerp(windCells[4].ToOffset().z, windCells[5].ToOffset().z, z);
+                        mag = Coserp(0, 100, magT) * magnitudeMult;
                     } // north polar easterlies
                     else if (windCell.Equals(windCells[5])) {
                         var t = Mathf.InverseLerp(windCells[5].ToOffset().z, args.SizeZ, z);
                         dir = 180;
                         dir = (int)Mathf.Lerp(270, dir, t);
-                        mag = t * 100f * magnitudeMult;
+                        mag = Coserp(0, 100, t) * magnitudeMult;
                     }
                     else {
                         wData.WindDict[tile] = new Tuple<int, float>(0, 0f);
@@ -801,7 +804,8 @@ namespace EconSim
                         mag = 0.05f;
                     }
                     if (mag > 0) {
-                        var tempChange = (mag / 100) * 0.1f * wData.WorldDict[tile].Temperature;
+                        //var tempChange = (mag / 100) * 0.1f * wData.WorldDict[tile].Temperature;
+                        var tempChange = 0;
                         var humidityChange = wData.WorldDict[tile].Humidity > wData.WorldDict[tile].MaxHumidity * 1.35f ? 
                             (wData.WorldDict[tile].Humidity - wData.WorldDict[tile].MaxHumidity) + (mag / 100f) * 0.45f * wData.WorldDict[tile].Humidity : (mag / 100f) * 0.65f * wData.WorldDict[tile].Humidity;
                         wData.WorldDict[tile].Temperature -= tempChange;
@@ -1013,6 +1017,70 @@ namespace EconSim
 
             // PROFILING
             Debug.Log(Time.realtimeSinceStartup.ToString() + ": Precipitation Smoothing Complete.");
+
+            // For fun, I am going to implement some rough climate assignment and visuals
+            // visuals
+            foreach(CubeCoordinates tile in wData.WorldDict.Keys) {
+                if (wData.WorldDict[tile].Temperature > 20) {
+                    if (wData.WorldDict[tile].Humidity > 75) {
+                        wData.WorldDict[tile].Terrain = TerrainType.TropRainForest;
+                    }
+                    else if (wData.WorldDict[tile].Humidity <= 75 && wData.WorldDict[tile].Humidity > 30) {
+                        wData.WorldDict[tile].Terrain = TerrainType.TropForest;
+                    }
+                    else if (wData.WorldDict[tile].Humidity <= 30 && wData.WorldDict[tile].Humidity > 15) {
+                        wData.WorldDict[tile].Terrain = TerrainType.Savanna;
+                    }
+                    else if (wData.WorldDict[tile].Humidity <= 15) {
+                        wData.WorldDict[tile].Terrain = TerrainType.SubtropDesert;
+                    }
+                }
+                else if (wData.WorldDict[tile].Temperature <= 20 && wData.WorldDict[tile].Temperature > 10) {
+                    if (wData.WorldDict[tile].Humidity > 65) {
+                        wData.WorldDict[tile].Terrain = TerrainType.TempRainForest;
+                    }
+                    else if (wData.WorldDict[tile].Humidity <= 65 && wData.WorldDict[tile].Humidity > 30) {
+                        wData.WorldDict[tile].Terrain = TerrainType.TempDecidForest;
+                    }
+                    else if (wData.WorldDict[tile].Humidity <= 30 && wData.WorldDict[tile].Humidity > 10) {
+                        wData.WorldDict[tile].Terrain = TerrainType.Woodland;
+                    }
+                    else if (wData.WorldDict[tile].Humidity <= 10) {
+                        wData.WorldDict[tile].Terrain = TerrainType.Grassland;
+                    }
+                }
+                else if (wData.WorldDict[tile].Temperature <= 10 && wData.WorldDict[tile].Temperature > 4) {
+                    if (wData.WorldDict[tile].Humidity > 25) {
+                        wData.WorldDict[tile].Terrain = TerrainType.TempDecidForest;
+                    }
+                    else if (wData.WorldDict[tile].Humidity <= 25 && wData.WorldDict[tile].Humidity > 10) {
+                        wData.WorldDict[tile].Terrain = TerrainType.Woodland;
+                    }
+                    else if (wData.WorldDict[tile].Humidity <= 10) {
+                        wData.WorldDict[tile].Terrain = TerrainType.Grassland;
+                    }
+                }
+                else if (wData.WorldDict[tile].Temperature <= 4 && wData.WorldDict[tile].Temperature > -5) {
+                    if (wData.WorldDict[tile].Humidity > 25) {
+                        wData.WorldDict[tile].Terrain = TerrainType.Taiga;
+                    }
+                    else if (wData.WorldDict[tile].Humidity <= 25 && wData.WorldDict[tile].Humidity > 10) {
+                        wData.WorldDict[tile].Terrain = TerrainType.Shrubland;
+                    }
+                    else if (wData.WorldDict[tile].Humidity <= 10) {
+                        wData.WorldDict[tile].Terrain = TerrainType.SubtropDesert;
+                    }
+                } else if(wData.WorldDict[tile].Temperature <= -5) {
+                    wData.WorldDict[tile].Terrain = TerrainType.Tundra;
+                }
+                if(wData.WorldDict[tile].Elevation > 22) {
+                    wData.WorldDict[tile].Terrain = TerrainType.Mountain;
+                } else if(wData.WorldDict[tile].Elevation <= 22 && wData.WorldDict[tile].Elevation > 19) {
+                    wData.WorldDict[tile].Terrain = TerrainType.Hill;
+                } else if(wData.WorldDict[tile].Elevation < 2) {
+                    wData.WorldDict[tile].Terrain = TerrainType.Sand;
+                }
+            }
 
             return wData;
 

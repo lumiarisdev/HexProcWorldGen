@@ -7,12 +7,14 @@ using UnityEngine.UIElements;
 public class UIHandler : MonoBehaviour
 {
     private Button startButton;
+    private Slider progressBar;
 
     private void OnEnable() {
 
         var rootVE = GetComponent<UIDocument>().rootVisualElement;
 
         startButton = rootVE.Q<Button>("start-button");
+        progressBar = rootVE.Q<Slider>("progress-bar");
 
         startButton.RegisterCallback<ClickEvent>(ev => StartSim());
 
@@ -29,7 +31,7 @@ public class UIHandler : MonoBehaviour
 
         while(!operation.isDone) {
             float progress = Mathf.Clamp01(operation.progress / .9f);
-            Debug.Log(progress);
+            progressBar.value = progress;
             yield return null;
         }
     }

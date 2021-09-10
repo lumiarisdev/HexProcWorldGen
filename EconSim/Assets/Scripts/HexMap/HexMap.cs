@@ -30,12 +30,25 @@ public class HexMap : MonoBehaviour {
         Color.grey,
         Color.HSVToRGB((30f/360f), 1f, 0.59f),
         Color.HSVToRGB((56f/360f), 0.89f, 0.96f),
-        // debug1-3
+        // debug1-5
         Color.red,
         Color.magenta,
         Color.HSVToRGB(291, 0.9f, 0.7f),
         Color.cyan,
         Color.white,
+        // terrain coloring
+        Color.HSVToRGB(117f/360f, .94f, 1), // tropical rain forest
+        Color.HSVToRGB(117f/360f, .94f, 0.66f), // tropical forest
+        Color.HSVToRGB(72f/360f, .95f, 0.87f), // savanna
+        Color.HSVToRGB(38f/360f, .96f, 1), // subtropical desert
+        Color.HSVToRGB(159f/360f, .95f, 1), // temperate rain forest
+        Color.HSVToRGB(107f/360f, .66f, .78f), // temperate decid forest
+        Color.HSVToRGB(107f/360f, .66f, .8f), // woodland
+        Color.HSVToRGB(107f/360f, .66f, .92f), // grassland
+        Color.HSVToRGB(59f/360f, .67f, .92f), //shrubland
+        Color.HSVToRGB(114f/360f, .97f, .55f), // taiga
+        Color.HSVToRGB(55f/360f, .95f, 1), // desert
+        Color.HSVToRGB(181f/360f, .95f, 1) // tundra
     };
 
     public HexMapChunk hexChunkPrefab;
@@ -45,7 +58,7 @@ public class HexMap : MonoBehaviour {
     List<HexMapChunk> chunks;
 
     static Dictionary<CubeCoordinates, HexMeshCell> hexMeshCells = new Dictionary<CubeCoordinates, HexMeshCell>();
-    WorldMap worldMap;
+    public WorldMap worldMap;
     static Dictionary<CubeCoordinates, LineRenderer> windVectors;
 
     public Texture2D noiseSource; // source for our vertex perturbation noise
@@ -278,8 +291,8 @@ public class HexMap : MonoBehaviour {
             cell.color = colors[(int)wTile.Terrain];
         }
         else if(debugMode == DebugMode.Wind) {
-            
-            cell.color = Color.HSVToRGB(213.1f/360f, 0.2042f, 0.5569f);
+
+            cell.color = colors[(int)wTile.Terrain];
 
             // draw line for wind vector
             windVectors[wTile.Coordinates] = cell.GetComponent<LineRenderer>();
@@ -341,7 +354,8 @@ public class HexMap : MonoBehaviour {
 
 
         // text label
-        cell.label = CreateCellLabel(pos, wTile);
+        //cell.label = CreateCellLabel(pos, wTile);
+        cell.label = CreateCellLabelT(pos, wTile, wTile.Terrain.ToString());
 
         // wind debug
         if(debugMode == DebugMode.Wind) {

@@ -16,7 +16,19 @@ namespace EconSim {
         Debug2,
         Debug3,
         Debug4,
-        Debug5
+        Debug5,
+        TropRainForest,
+        TropForest,
+        Savanna,
+        SubtropDesert,
+        TempRainForest,
+        TempDecidForest,
+        Woodland,
+        Grassland,
+        Shrubland,
+        Taiga,
+        Desert,
+        Tundra
     }
 
     public class WorldTile {
