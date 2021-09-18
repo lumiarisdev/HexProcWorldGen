@@ -7,43 +7,36 @@ namespace EconSim {
 
     public class WorldMap : MonoBehaviour {
 
+        public static WorldMap Instance;
+
         public HexMap hexMap;
 
+        public WorldGenerator Gen;
         public WorldArgs generatorArgs;
-        public bool DebugMode;
+        //public bool DebugMode;
 
         public WorldMapData worldData;
 
         private void Awake() {
 
-            WorldGenerator gen = new WorldGenerator(generatorArgs);
+            if(Instance == null) {
+                Instance = this;
+            } else {
+                Destroy(this);
+            }
 
-            worldData = gen.GenerateWorld();
-
-            hexMap = GetComponent<HexMap>();
-
+            Gen = new WorldGenerator(generatorArgs);
 
         }
 
         // Start is called before the first frame update
         void Start() {
-
-            
-
+            hexMap = HexMap.Instance;
         }
 
         // Update is called once per frame
         void Update() {
-
-            if (Input.GetKey(KeyCode.G)) {
-                Debug.Log("Generating new world...");
-                worldData = WorldGenerator.GenerateWorld(generatorArgs);
-                Debug.Log(Time.deltaTime);
-                Debug.Log("Refreshing HexMap...");
-                hexMap.Refresh();
-                Debug.Log(Time.deltaTime);
-            }
-
+            
         }
 
     }

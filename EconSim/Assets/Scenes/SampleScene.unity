@@ -268,7 +268,7 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 50, y: -30, z: 0}
---- !u!1 &708609110
+--- !u!1 &803415041
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -276,9 +276,9 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 708609113}
-  - component: {fileID: 708609112}
-  - component: {fileID: 708609111}
+  - component: {fileID: 803415043}
+  - component: {fileID: 803415042}
+  - component: {fileID: 803415044}
   m_Layer: 5
   m_Name: UIDocument
   m_TagString: Untagged
@@ -286,41 +286,29 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &708609111
+--- !u!114 &803415042
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 708609110}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: deb733a46cab5834db1daa654526668d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
---- !u!114 &708609112
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 708609110}
+  m_GameObject: {fileID: 803415041}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f21c074d86024caca2a0034ce4f53f73, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_PanelSettings: {fileID: 11400000, guid: cf4322d7edc936f49949b2131b1b4f61, type: 2}
+  m_PanelSettings: {fileID: 11400000, guid: db037c3319626cb45bae64c142e2b6fe, type: 2}
   m_ParentUI: {fileID: 0}
   sourceAsset: {fileID: 9197481963319205126, guid: c71e7ba648824534c9799d265e5dd1e8, type: 3}
   m_SortingOrder: 0
---- !u!4 &708609113
+--- !u!4 &803415043
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 708609110}
+  m_GameObject: {fileID: 803415041}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
@@ -328,6 +316,18 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 3
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &803415044
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 803415041}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: deb733a46cab5834db1daa654526668d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &963194225
 GameObject:
   m_ObjectHideFlags: 0
@@ -447,16 +447,16 @@ MonoBehaviour:
     StringSeed: 
     UseStringSeed: 0
     RandomizeSeed: 1
-    SizeChunksX: 80
-    SizeChunksZ: 40
+    SizeChunksX: 40
+    SizeChunksZ: 20
     OceanFrequency: 0.55
-    NumPlates: 25
+    NumPlates: 10
     PlateSpreadDecay: 0.99975
     PlateMotionScaleFactor: 0.25
     UpliftDecay: 0.739
     TemperatureDecay: 0.9905
     TemperatureDecayElevation: 0.888
-  DebugMode: 0
+    WeatherPasses: 10
 --- !u!114 &1160655035
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -476,6 +476,7 @@ MonoBehaviour:
   cellLabelPrefab: {fileID: 5766728718376711944, guid: 3c7df4830ed111f43abee43d206cd82c, type: 3}
   worldMap: {fileID: 0}
   noiseSource: {fileID: 2800000, guid: 60e6526e017a1a24596bc32f23d38f18, type: 3}
+  mapExists: 0
 --- !u!4 &1160655036
 Transform:
   m_ObjectHideFlags: 0

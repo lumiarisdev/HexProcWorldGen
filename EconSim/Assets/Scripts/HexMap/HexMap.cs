@@ -65,16 +65,20 @@ public class HexMap : MonoBehaviour {
 
     private IEnumerator currentCoroutine;
 
+    public bool mapExists;
+
     private void Awake() {
 
-        Instance = this;
+        if(Instance == null) {
+            Instance = this;
+        } else {
+            Destroy(this);
+        }
 
         HexMetrics.noiseSource = noiseSource;
+        mapExists = false;
 
         windVectors = new Dictionary<CubeCoordinates, LineRenderer>();
-        worldMap = GetComponent<WorldMap>();
-
-        //hexMeshCells = new Dictionary<CubeCoordinates, HexMeshCell>();
 
     }
 
@@ -83,42 +87,19 @@ public class HexMap : MonoBehaviour {
     }
 
     private void Start() {
-        CreateChunks();
-        CreateCells(worldMap.worldData);
+        worldMap = WorldMap.Instance;
     }
 
     // Update is called once per frame
     void Update()
     {
-        
-        /*
-         * Let's handle some input and map updates right here for now.
-         * This will require a lot of refactoring and cleaning up.
-         */
-
-        if(Input.GetKey(KeyCode.H)) {
-            //Ray inputRay = Camera.main.ScreenPointToRay(Input.mousePosition);
-            //RaycastHit hit;
-            //if(Physics.Raycast(inputRay, out hit)) {
-
-            //}
-            //var mPos = Input.mousePosition;
-            //mPos.x /= (2f * HexMetrics.outerRadius * 0.75f);
-            //mPos.z = mPos.y;
-            //mPos.z /= Mathf.Sqrt(3) * HexMetrics.outerRadius;
-            //var mCubePos = CubeCoordinates.OffsetToCube(mPos);
-            //Debug.Log("V: " + mPos + " | C: " + mCubePos);
-
-            //if(worldMap.worldTiles.TryGetValue(mCubePos, out WorldTile _)) {
-            //    worldMap.worldTiles[mCubePos].Terrain = TerrainType.Ocean;
-            //    UpdateCell(mCubePos);
-            //}
-
-
-            Refresh();
-
+        if(!mapExists) {
+            if (worldMap.Gen.progress >= 1f) {
+                CreateChunks();
+                CreateCells(worldMap.worldData);
+                mapExists = true;
+            }
         }
-
     }
 
     /*
