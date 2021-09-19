@@ -103,10 +103,10 @@ namespace EconSim
          */
         private void GenerateHeightMap() {
             Dictionary<CubeCoordinates, WorldPlate> tectPlates = new Dictionary<CubeCoordinates, WorldPlate>();
-            Dictionary<CubeCoordinates, bool> assigned = new Dictionary<CubeCoordinates, bool>();
-            Dictionary<CubeCoordinates, Deque<CubeCoordinates>> ffDeqs = new Dictionary<CubeCoordinates, Deque<CubeCoordinates>>(); // list of deques for the flood fills later
-            Dictionary<CubeCoordinates, float> chance = new Dictionary<CubeCoordinates, float>();
-            Dictionary<CubeCoordinates, Dictionary<CubeCoordinates, bool>> visited = new Dictionary<CubeCoordinates, Dictionary<CubeCoordinates, bool>>();
+            //Dictionary<CubeCoordinates, bool> assigned = new Dictionary<CubeCoordinates, bool>();
+            //Dictionary<CubeCoordinates, Deque<CubeCoordinates>> ffDeqs = new Dictionary<CubeCoordinates, Deque<CubeCoordinates>>(); // list of deques for the flood fills later
+            //Dictionary<CubeCoordinates, float> chance = new Dictionary<CubeCoordinates, float>();
+            //Dictionary<CubeCoordinates, Dictionary<CubeCoordinates, bool>> visited = new Dictionary<CubeCoordinates, Dictionary<CubeCoordinates, bool>>();
 
             int rX = UnityEngine.Random.Range(0, args.SizeX);
             int rZ = UnityEngine.Random.Range(0, args.SizeZ);
@@ -137,40 +137,127 @@ namespace EconSim
                 tectPlates[plateOrigin].Motion = CubeCoordinates.Lerp(plateOrigin, driftPoint, args.PlateMotionScaleFactor) - plateOrigin;
 
                 // set up flood fill variables
-                ffDeqs[plateOrigin] = new Deque<CubeCoordinates>();
-                ffDeqs[plateOrigin].AddToBack(plateOrigin);
-                visited[plateOrigin] = new Dictionary<CubeCoordinates, bool>();
-                visited[plateOrigin][plateOrigin] = true;
-                chance[plateOrigin] = 75f; //100f;
+                //ffDeqs[plateOrigin] = new Deque<CubeCoordinates>();
+                //ffDeqs[plateOrigin].AddToBack(plateOrigin);
+                //visited[plateOrigin] = new Dictionary<CubeCoordinates, bool>();
+                //visited[plateOrigin][plateOrigin] = true;
+                //chance[plateOrigin] = 75f; //100f;
 
-            }
-            // use flood fill to assign tiles to plates
-            // may be some infinite looping still, implementing a fallback
-            // it will break after a given number of counts
-            int b = args.SizeX * args.SizeZ;
-            int j = 0;
-            while (assigned.Count < WorldData.WorldDict.Count && j < b) {
-                foreach (CubeCoordinates plateOrigin in tectPlates.Keys) {
-                    if(ffDeqs[plateOrigin].Count > 0) {
-                        var coords = ffDeqs[plateOrigin].RemoveFromFront();
-                        if (WorldData.WorldDict[coords].PlateCoords.Equals(new CubeCoordinates())) {
-                            WorldData.WorldDict[coords].PlateCoords = plateOrigin;
-                            assigned[coords] = true;
-                            //if (chance[plateOrigin] >= UnityEngine.Random.Range(0f, 100f)) {
-                                for (HexDirection d = HexDirection.N; d <= HexDirection.NW; d++) {
-                                    if (!visited[plateOrigin].TryGetValue(coords.GetNeighbor(d), out bool _) && ValidInMap(coords.GetNeighbor(d))) {
-                                        ffDeqs[plateOrigin].AddToBack(coords.GetNeighbor(d));
-                                        visited[plateOrigin][coords.GetNeighbor(d)] = true;
+                /*
+                 * Assign tiles to plates using a lazy flood fill, with a supplimentary check to ensure
+                 * that all of the tiles get assigned to a plate. 
+                 * 
+                 * Attempting to cap the growth on the plates
+                 *
+                */
+                int maxPlateSize = (int)(args.SizeX * args.SizeZ / (args.NumPlates * 0.25f));
+                int plateSize = 1;
+                Deque<CubeCoordinates> ffDeq = new Deque<CubeCoordinates>();
+                Dictionary<CubeCoordinates, bool> visited = new Dictionary<CubeCoordinates, bool>();
+                var chance = 100f;
+                var decay = args.PlateSpreadDecay;
+                ffDeq.AddToBack(plateOrigin);
+                visited[plateOrigin] = true;
+                while (ffDeq.Count > 0) {
+                    var coords = ffDeq.RemoveFromFront();
+                    if (WorldData.WorldDict[coords].PlateCoords.Equals(new CubeCoordinates())) {
+                        WorldData.WorldDict[coords].PlateCoords = plateOrigin;
+                        plateSize++;
+                        //if(plateSize >= maxPlateSize) {
+                        //    break;
+                        //}
+                        if (chance >= UnityEngine.Random.Range(0f, 100f)) {
+                            for (HexDirection d = HexDirection.N; d <= HexDirection.NW; d++) {
+                                if (!visited.TryGetValue(coords.GetNeighbor(d), out bool _)) {
+                                    if (ValidInMap(coords.GetNeighbor(d))) {
+                                        ffDeq.AddToBack(coords.GetNeighbor(d));
+                                        visited[coords.GetNeighbor(d)] = true;
                                     }
                                 }
-                            //}
-                            //chance[plateOrigin] *= args.PlateSpreadDecay;
-                            // leaving out the chance decay right now, as it may cause this to loop forever without completing
+                            }
                         }
+                        chance *= decay;
                     }
                 }
-                j++;
+
             }
+
+            // this is the supplimentary check
+            /*
+             * This needs to be more robust. Doing the supplimentary assignment based only off of distance creates
+             * edge cases where the closest plate origin is not the logical closest plate, because the plates
+             * origin is not close to the center.
+             * 
+             * In order to fix this, we should only assign to the closest plate if we're sure that its the
+             * correct one. So we should check our neighbors, and compare their plateCoords.
+             * 
+             * If they have no neighbors with plate coords, it is probably best to skip that tile and come back.
+             */
+            Queue<WorldTile> unassignedTiles = new Queue<WorldTile>();
+            foreach (WorldTile tile in WorldData.WorldDict.Values) {
+                if (tile.PlateCoords.Equals(new CubeCoordinates())) {
+                    unassignedTiles.Enqueue(tile);
+                }
+            }
+            while (unassignedTiles.Count > 0) {
+                var tile = unassignedTiles.Dequeue();
+                var neighborsWithPlates = new List<WorldTile>();
+                for (HexDirection d = HexDirection.N; d <= HexDirection.NW; d++) {
+                    if (WorldData.WorldDict.TryGetValue(tile.Coordinates.GetNeighbor(d), out WorldTile value) && !value.PlateCoords.Equals(new CubeCoordinates())) {
+                        neighborsWithPlates.Add(value);
+                    }
+                }
+                if (neighborsWithPlates.Count == 0) {
+                    unassignedTiles.Enqueue(tile);
+                    continue;
+                }
+                if (neighborsWithPlates.Count > 0) {
+                    var plateCounts = new Dictionary<CubeCoordinates, int>();
+                    foreach (WorldTile neighbor in neighborsWithPlates) {
+                        if (plateCounts.TryGetValue(neighbor.PlateCoords, out int value)) {
+                            plateCounts[neighbor.PlateCoords]++;
+                        }
+                        else {
+                            plateCounts.Add(neighbor.PlateCoords, 1);
+                        }
+                    }
+                    CubeCoordinates mostCommonPlate = new CubeCoordinates();
+                    plateCounts[mostCommonPlate] = 0;
+                    foreach (CubeCoordinates key in plateCounts.Keys) {
+                        if (plateCounts[key] > plateCounts[mostCommonPlate]) {
+                            mostCommonPlate = key;
+                        }
+                    }
+                    tile.PlateCoords = mostCommonPlate;
+                }
+            }
+
+            // this is infinite looping so I will return to the previous strategy of generating the plates one at a time
+            // and using a supplimentary check to catch the remaining tiles
+            //int b = args.SizeX * args.SizeZ;
+            //int j = 0;
+            //while (assigned.Count < WorldData.WorldDict.Count && j < b) {
+            //    foreach (CubeCoordinates plateOrigin in tectPlates.Keys) {
+            //        if(ffDeqs[plateOrigin].Count > 0) {
+            //            var coords = ffDeqs[plateOrigin].RemoveFromFront();
+            //            if (WorldData.WorldDict[coords].PlateCoords.Equals(new CubeCoordinates())) {
+            //                WorldData.WorldDict[coords].PlateCoords = plateOrigin;
+            //                assigned[coords] = true;
+            //                //if (chance[plateOrigin] >= UnityEngine.Random.Range(0f, 100f)) {
+            //                    for (HexDirection d = HexDirection.N; d <= HexDirection.NW; d++) {
+            //                        if (!visited[plateOrigin].TryGetValue(coords.GetNeighbor(d), out bool _) && ValidInMap(coords.GetNeighbor(d))) {
+            //                            ffDeqs[plateOrigin].AddToBack(coords.GetNeighbor(d));
+            //                            visited[plateOrigin][coords.GetNeighbor(d)] = true;
+            //                        }
+            //                    }
+            //                //}
+            //                //chance[plateOrigin] *= args.PlateSpreadDecay;
+            //                // leaving out the chance decay right now, as it may cause this to loop forever without completing
+            //            }
+            //        }
+            //    }
+            //    j++;
+            //}
 
             // find boundaries now that all tiles are assigned
             // still need to figure out something more performant for this, this is horrible atm O(6 * mapSize)

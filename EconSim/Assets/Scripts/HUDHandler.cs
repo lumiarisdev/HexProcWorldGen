@@ -34,7 +34,7 @@ public class HUDHandler : MonoBehaviour {
     }
 
     private void Start() {
-        var rootVE = GetComponent<UIDocument>().rootVisualElement;
+        var rootVE = GetComponent<UnityEngine.UIElements.UIDocument>().rootVisualElement;
         wMap = EconSim.WorldMap.Instance;
 
         // containers
