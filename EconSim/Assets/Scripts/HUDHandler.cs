@@ -8,14 +8,26 @@ public class HUDHandler : MonoBehaviour {
     private VisualElement seedDisplay;
     private VisualElement debugSelector;
     private VisualElement startPanel;
+    private VisualElement inspector;
 
     private Button generateButton;
     private Slider progressBar;
 
-    private Toggle terrain;
-    private Toggle humidity;
-    private Toggle temperature;
+    //private Toggle terrain;
+    //private Toggle humidity;
+    //private Toggle temperature;
+
     private Label seed;
+    private Label maxPrecip;
+
+    private Label coords;
+    private Label terrain;
+    private Label elevation;
+    private Label temp;
+    private Label humidity;
+    private Label windDir;
+    private Label windMag;
+    private Label precip;
 
     EconSim.WorldMap wMap;
 
@@ -36,37 +48,70 @@ public class HUDHandler : MonoBehaviour {
     private void Start() {
         var rootVE = GetComponent<UnityEngine.UIElements.UIDocument>().rootVisualElement;
         wMap = EconSim.WorldMap.Instance;
+        mapLoaded = false;
 
         // containers
         seedDisplay = rootVE.Q("seed-display");
         debugSelector = rootVE.Q("debug-selector");
         startPanel = rootVE.Q("start-panel");
+        inspector = rootVE.Q("inspector");
 
         generateButton = rootVE.Q<Button>("generate");
         progressBar = rootVE.Q<Slider>("progress");
         generateButton.RegisterCallback<ClickEvent>(ev => GenerateButtonPressed());
 
-        seed = rootVE.Q<Label>("seed");
-        terrain = rootVE.Q<Toggle>("terrain-map");
-        humidity = rootVE.Q<Toggle>("humidity-map");
-        temperature = rootVE.Q<Toggle>("temperature-map");
+        seed = seedDisplay.Q<Label>("seed");
+        maxPrecip = seedDisplay.Q<Label>("max-precip");
+
+        //terrain = debugSelector.Q<Toggle>("terrain-map");
+        //humidity = debugSelector.Q<Toggle>("humidity-map");
+        //temperature = debugSelector.Q<Toggle>("temperature-map");
+
+        coords = inspector.Q<Label>("coords");
+        terrain = inspector.Q<Label>("terrain");
+        elevation = inspector.Q<Label>("elevation");
+        temp = inspector.Q<Label>("temp");
+        humidity = inspector.Q<Label>("humidity");
+        windDir = inspector.Q<Label>("wind-dir");
+        windMag = inspector.Q<Label>("wind-mag");
+        precip = inspector.Q<Label>("precip");
 
         progressBar.SetEnabled(false);
-        seedDisplay.SetEnabled(false);
-        debugSelector.SetEnabled(false);
 
     }
 
+    private bool mapLoaded;
+
     private void Update() {
-        if (progressBar.value >= 1f) {
-            progressBar.value = 0;
-            progressBar.SetEnabled(false);
-            startPanel.SetEnabled(false);
-            startPanel.Remove(progressBar);
+        if (wMap.Gen.isDone && !mapLoaded) {
+            startPanel.RemoveFromHierarchy();
+            seed.text = "Seed: " + wMap.generatorArgs.WorldSeed.ToString();
+            maxPrecip.text = EconSim.WorldTile.MaxPrecipitation.ToString();
+            mapLoaded = true;
         }
         if (progressBar.enabledInHierarchy) {
             progressBar.value = wMap.Gen.progress;
         }
+
+        if(mapLoaded) {
+            Ray inputRay = Camera.main.ScreenPointToRay(Input.mousePosition);
+            RaycastHit hit;
+            if(Physics.Raycast(inputRay, out hit)) {
+
+                var pos = transform.InverseTransformPoint(hit.point);
+                var tile = EconSim.CubeCoordinates.FromPosition(pos);
+                coords.text = "Coordinates: " + tile.ToString();
+                terrain.text = "Terrain: " + wMap.worldData.WorldDict[tile].Terrain.ToString();
+                elevation.text = "Elevation: " + wMap.worldData.WorldDict[tile].Elevation.ToString();
+                temp.text = "Temperature: " + wMap.worldData.WorldDict[tile].Temperature.ToString();
+                humidity.text = "Absolute Humidity: " + wMap.worldData.WorldDict[tile].Humidity.ToString();
+                windDir.text = "Wind Direction: " + wMap.worldData.WorldDict[tile].Wind.Item1.ToString();
+                windMag.text = "Wind Speed: " + wMap.worldData.WorldDict[tile].Wind.Item2.ToString();
+                precip.text = "Precipitation: " + wMap.worldData.WorldDict[tile].Precipitation.ToString();
+
+            }
+        }
+
     }
 
 }

@@ -13,11 +13,13 @@ namespace EconSim
         private WorldArgs args;
         public WorldMapData WorldData;
         public float progress;
+        public bool isDone;
 
         public WorldGenerator(WorldArgs _args) {
-            args = _args;
             WorldData = new WorldMapData();
+            args = _args;
             progress = 0f;
+            isDone = false;
         }
 
         public static WorldMapData GenerateWorld(WorldArgs _args) {
@@ -76,6 +78,8 @@ namespace EconSim
             progress += 1f / 8f;
             yield return null;
 
+            isDone = true;
+
             // everything needed for the climate system has been created at this point.
             // the main things that need done now are rivers, lakes, and forests
 
@@ -89,7 +93,7 @@ namespace EconSim
                     tiles[coords] = new WorldTile {
                         Coordinates = coords,
                         PlateCoords = new CubeCoordinates(),
-                        Elevation = 0,
+                        Elevation = -1000,
                         Temperature = 0,
                         Precipitation = 0,
                     };
@@ -103,10 +107,10 @@ namespace EconSim
          */
         private void GenerateHeightMap() {
             Dictionary<CubeCoordinates, WorldPlate> tectPlates = new Dictionary<CubeCoordinates, WorldPlate>();
-            //Dictionary<CubeCoordinates, bool> assigned = new Dictionary<CubeCoordinates, bool>();
-            //Dictionary<CubeCoordinates, Deque<CubeCoordinates>> ffDeqs = new Dictionary<CubeCoordinates, Deque<CubeCoordinates>>(); // list of deques for the flood fills later
-            //Dictionary<CubeCoordinates, float> chance = new Dictionary<CubeCoordinates, float>();
-            //Dictionary<CubeCoordinates, Dictionary<CubeCoordinates, bool>> visited = new Dictionary<CubeCoordinates, Dictionary<CubeCoordinates, bool>>();
+            Dictionary<CubeCoordinates, bool> assigned = new Dictionary<CubeCoordinates, bool>();
+            Dictionary<CubeCoordinates, Deque<CubeCoordinates>> ffDeqs = new Dictionary<CubeCoordinates, Deque<CubeCoordinates>>(); // list of deques for the flood fills later
+            Dictionary<CubeCoordinates, float> chance = new Dictionary<CubeCoordinates, float>();
+            Dictionary<CubeCoordinates, Dictionary<CubeCoordinates, bool>> visited = new Dictionary<CubeCoordinates, Dictionary<CubeCoordinates, bool>>();
 
             int rX = UnityEngine.Random.Range(0, args.SizeX);
             int rZ = UnityEngine.Random.Range(0, args.SizeZ);
@@ -121,8 +125,8 @@ namespace EconSim
                 tectPlates[plateOrigin] = new WorldPlate(plateOrigin);
                 tectPlates[plateOrigin].Oceanic = args.OceanFrequency > UnityEngine.Random.Range(0f, 1f);
                 tectPlates[plateOrigin].DesiredElevation = tectPlates[plateOrigin].Oceanic ?
-                    UnityEngine.Random.Range(-12, -2) :
-                    UnityEngine.Random.Range(2, 10);
+                    UnityEngine.Random.Range(-20, -5) :
+                    UnityEngine.Random.Range(5, 20);
                 CubeCoordinates driftPoint = plateOrigin;
                 while (driftPoint.Equals(plateOrigin)) {
                     rX = UnityEngine.Random.Range(0, args.SizeX);
@@ -137,138 +141,48 @@ namespace EconSim
                 tectPlates[plateOrigin].Motion = CubeCoordinates.Lerp(plateOrigin, driftPoint, args.PlateMotionScaleFactor) - plateOrigin;
 
                 // set up flood fill variables
-                //ffDeqs[plateOrigin] = new Deque<CubeCoordinates>();
-                //ffDeqs[plateOrigin].AddToBack(plateOrigin);
-                //visited[plateOrigin] = new Dictionary<CubeCoordinates, bool>();
-                //visited[plateOrigin][plateOrigin] = true;
-                //chance[plateOrigin] = 75f; //100f;
-
-                /*
-                 * Assign tiles to plates using a lazy flood fill, with a supplimentary check to ensure
-                 * that all of the tiles get assigned to a plate. 
-                 * 
-                 * Attempting to cap the growth on the plates
-                 *
-                */
-                int maxPlateSize = (int)(args.SizeX * args.SizeZ / (args.NumPlates * 0.25f));
-                int plateSize = 1;
-                Deque<CubeCoordinates> ffDeq = new Deque<CubeCoordinates>();
-                Dictionary<CubeCoordinates, bool> visited = new Dictionary<CubeCoordinates, bool>();
-                var chance = 100f;
-                var decay = args.PlateSpreadDecay;
-                ffDeq.AddToBack(plateOrigin);
-                visited[plateOrigin] = true;
-                while (ffDeq.Count > 0) {
-                    var coords = ffDeq.RemoveFromFront();
-                    if (WorldData.WorldDict[coords].PlateCoords.Equals(new CubeCoordinates())) {
-                        WorldData.WorldDict[coords].PlateCoords = plateOrigin;
-                        plateSize++;
-                        //if(plateSize >= maxPlateSize) {
-                        //    break;
-                        //}
-                        if (chance >= UnityEngine.Random.Range(0f, 100f)) {
-                            for (HexDirection d = HexDirection.N; d <= HexDirection.NW; d++) {
-                                if (!visited.TryGetValue(coords.GetNeighbor(d), out bool _)) {
-                                    if (ValidInMap(coords.GetNeighbor(d))) {
-                                        ffDeq.AddToBack(coords.GetNeighbor(d));
-                                        visited[coords.GetNeighbor(d)] = true;
-                                    }
-                                }
-                            }
-                        }
-                        chance *= decay;
-                    }
-                }
+                ffDeqs[plateOrigin] = new Deque<CubeCoordinates>();
+                ffDeqs[plateOrigin].AddToBack(plateOrigin);
+                visited[plateOrigin] = new Dictionary<CubeCoordinates, bool>();
+                visited[plateOrigin][plateOrigin] = true;
+                chance[plateOrigin] = 60f; //100f;
 
             }
 
-            // this is the supplimentary check
-            /*
-             * This needs to be more robust. Doing the supplimentary assignment based only off of distance creates
-             * edge cases where the closest plate origin is not the logical closest plate, because the plates
-             * origin is not close to the center.
-             * 
-             * In order to fix this, we should only assign to the closest plate if we're sure that its the
-             * correct one. So we should check our neighbors, and compare their plateCoords.
-             * 
-             * If they have no neighbors with plate coords, it is probably best to skip that tile and come back.
-             */
-            Queue<WorldTile> unassignedTiles = new Queue<WorldTile>();
-            foreach (WorldTile tile in WorldData.WorldDict.Values) {
-                if (tile.PlateCoords.Equals(new CubeCoordinates())) {
-                    unassignedTiles.Enqueue(tile);
-                }
-            }
-            while (unassignedTiles.Count > 0) {
-                var tile = unassignedTiles.Dequeue();
-                var neighborsWithPlates = new List<WorldTile>();
-                for (HexDirection d = HexDirection.N; d <= HexDirection.NW; d++) {
-                    if (WorldData.WorldDict.TryGetValue(tile.Coordinates.GetNeighbor(d), out WorldTile value) && !value.PlateCoords.Equals(new CubeCoordinates())) {
-                        neighborsWithPlates.Add(value);
-                    }
-                }
-                if (neighborsWithPlates.Count == 0) {
-                    unassignedTiles.Enqueue(tile);
-                    continue;
-                }
-                if (neighborsWithPlates.Count > 0) {
-                    var plateCounts = new Dictionary<CubeCoordinates, int>();
-                    foreach (WorldTile neighbor in neighborsWithPlates) {
-                        if (plateCounts.TryGetValue(neighbor.PlateCoords, out int value)) {
-                            plateCounts[neighbor.PlateCoords]++;
-                        }
-                        else {
-                            plateCounts.Add(neighbor.PlateCoords, 1);
-                        }
-                    }
-                    CubeCoordinates mostCommonPlate = new CubeCoordinates();
-                    plateCounts[mostCommonPlate] = 0;
-                    foreach (CubeCoordinates key in plateCounts.Keys) {
-                        if (plateCounts[key] > plateCounts[mostCommonPlate]) {
-                            mostCommonPlate = key;
-                        }
-                    }
-                    tile.PlateCoords = mostCommonPlate;
-                }
-            }
-
-            // this is infinite looping so I will return to the previous strategy of generating the plates one at a time
-            // and using a supplimentary check to catch the remaining tiles
             //int b = args.SizeX * args.SizeZ;
             //int j = 0;
-            //while (assigned.Count < WorldData.WorldDict.Count && j < b) {
-            //    foreach (CubeCoordinates plateOrigin in tectPlates.Keys) {
-            //        if(ffDeqs[plateOrigin].Count > 0) {
-            //            var coords = ffDeqs[plateOrigin].RemoveFromFront();
-            //            if (WorldData.WorldDict[coords].PlateCoords.Equals(new CubeCoordinates())) {
-            //                WorldData.WorldDict[coords].PlateCoords = plateOrigin;
-            //                assigned[coords] = true;
-            //                //if (chance[plateOrigin] >= UnityEngine.Random.Range(0f, 100f)) {
-            //                    for (HexDirection d = HexDirection.N; d <= HexDirection.NW; d++) {
-            //                        if (!visited[plateOrigin].TryGetValue(coords.GetNeighbor(d), out bool _) && ValidInMap(coords.GetNeighbor(d))) {
-            //                            ffDeqs[plateOrigin].AddToBack(coords.GetNeighbor(d));
-            //                            visited[plateOrigin][coords.GetNeighbor(d)] = true;
-            //                        }
-            //                    }
-            //                //}
-            //                //chance[plateOrigin] *= args.PlateSpreadDecay;
-            //                // leaving out the chance decay right now, as it may cause this to loop forever without completing
-            //            }
-            //        }
-            //    }
-            //    j++;
-            //}
+            while (assigned.Count < WorldData.WorldDict.Count) {
+                foreach (CubeCoordinates plateOrigin in tectPlates.Keys) {
+                    if(UnityEngine.Random.Range(0f, 100f) <= chance[plateOrigin]) {
+                        if (ffDeqs[plateOrigin].Count > 0) {
+                            var coords = ffDeqs[plateOrigin].RemoveFromFront();
+                            if (WorldData.WorldDict[coords].PlateCoords.Equals(new CubeCoordinates())) {
+                                WorldData.WorldDict[coords].PlateCoords = plateOrigin;
+                                assigned[coords] = true;
+                                //if (chance[plateOrigin] >= UnityEngine.Random.Range(0f, 100f)) {
+                                for (HexDirection d = HexDirection.N; d <= HexDirection.NW; d++) {
+                                    if (!visited[plateOrigin].TryGetValue(coords.GetNeighbor(d), out bool _) && ValidInMap(coords.GetNeighbor(d))) {
+                                        ffDeqs[plateOrigin].AddToBack(coords.GetNeighbor(d));
+                                        visited[plateOrigin][coords.GetNeighbor(d)] = true;
+                                    }
+                                }
+                                //}
+                                //chance[plateOrigin] *= args.PlateSpreadDecay;
+                                // leaving out the chance decay right now, as it may cause this to loop forever without completing
+                            }
+                        }
+                    }
+                }
+                //j++;
+            }
 
             // find boundaries now that all tiles are assigned
-            // still need to figure out something more performant for this, this is horrible atm O(6 * mapSize)
-            Dictionary<CubeCoordinates, bool> boundaryTiles = new Dictionary<CubeCoordinates, bool>();
             foreach (WorldTile tile in WorldData.WorldDict.Values) {
                 for (HexDirection i = 0; i <= HexDirection.NW; i++) {
-                    WorldTile neigh = ValidInMap(tile.Coordinates.GetNeighbor(i)) ? WorldData.WorldDict[tile.Coordinates.GetNeighbor(i)] :
-                        null;
+                    WorldTile neigh = WorldData.WorldDict.TryGetValue(tile.Coordinates.GetNeighbor(i), out WorldTile w) ? w : null;
                     if (neigh != null) {
                         if (!tile.PlateCoords.Equals(neigh.PlateCoords)) {
-                            boundaryTiles[tile.Coordinates] = true;
+                            tectPlates[tile.PlateCoords].BoundaryTiles.Add(tile.Coordinates);
                             //wData.WorldDict[tile].Terrain = TerrainType.Debug3; // debug
                             break;
                         }
@@ -277,122 +191,179 @@ namespace EconSim
             }
 
             // calculate elevations
-            foreach (CubeCoordinates tile in boundaryTiles.Keys) {
-                var plateOrigin = WorldData.WorldDict[tile].PlateCoords;
+            foreach(WorldPlate plate in tectPlates.Values) {
+                foreach (CubeCoordinates tile in plate.BoundaryTiles) {
+                    var plateOrigin = WorldData.WorldDict[tile].PlateCoords;
 
-                Dictionary<HexDirection, CubeCoordinates> plateNeighbors = new Dictionary<HexDirection, CubeCoordinates>();
-                for (HexDirection i = HexDirection.N; i <= HexDirection.NW; i++) {
-                    if (ValidInMap(tile.GetNeighbor(i))) {
-                        if (!WorldData.WorldDict[tile.GetNeighbor(i)].PlateCoords.Equals(plateOrigin)) {
-                            plateNeighbors[i] = WorldData.WorldDict[tile.GetNeighbor(i)].PlateCoords;
+                    Dictionary<HexDirection, CubeCoordinates> plateNeighbors = new Dictionary<HexDirection, CubeCoordinates>();
+                    for (HexDirection i = HexDirection.N; i <= HexDirection.NW; i++) {
+                        if (ValidInMap(tile.GetNeighbor(i))) {
+                            if (!WorldData.WorldDict[tile.GetNeighbor(i)].PlateCoords.Equals(plateOrigin)) {
+                                plateNeighbors[i] = WorldData.WorldDict[tile.GetNeighbor(i)].PlateCoords;
+                            }
                         }
                     }
-                }
 
-                // calculate pressure
+                    // calculate pressure
 
-                // testing some changes here to fix some outlier cases and smooth elevations moer
-                // mainly just preventing elevation from being added to by multiple interactions
-                // a testing seed: 8603485
-                // 5922675
+                    // testing some changes here to fix some outlier cases and smooth elevations moer
+                    // mainly just preventing elevation from being added to by multiple interactions
+                    // a testing seed: 8603485
+                    // 5922675
 
-                foreach (HexDirection nDir in plateNeighbors.Keys) { /* the direction of the neighbor tile, as a hexdirection */
-                    var pressure = 0;
-                    var plateNeighbor = plateNeighbors[nDir]; // neighbor's plate
-                    var neighbor = tile.GetNeighbor(nDir); // neighbor tile
-                    var nDirVector = neighbor - tile; // the direction of the neighbor tile, as a vector
-                    var r = tectPlates[plateOrigin].Motion - tectPlates[plateNeighbor].Motion;
-                    // the component of r along neighbor dir
-                    pressure += nDirVector.x != 0 ? r.x : 0;
-                    pressure += nDirVector.y != 0 ? r.y : 0;
-                    pressure += nDirVector.z != 0 ? r.z : 0;
+                    foreach (HexDirection nDir in plateNeighbors.Keys) { /* the direction of the neighbor tile, as a hexdirection */
+                        var pressure = 0;
+                        var plateNeighbor = plateNeighbors[nDir]; // neighbor's plate
+                        var neighbor = tile.GetNeighbor(nDir); // neighbor tile
+                        var nDirVector = neighbor - tile; // the direction of the neighbor tile, as a vector
+                        var r = tectPlates[plateOrigin].Motion - tectPlates[plateNeighbor].Motion;
+                        // the component of r along neighbor dir
+                        pressure += nDirVector.x != 0 ? r.x : 0;
+                        pressure += nDirVector.y != 0 ? r.y : 0;
+                        pressure += nDirVector.z != 0 ? r.z : 0;
 
-                    // map pressure to elevation, THIS COULD USE A LOT OF TWEAKING
-                    if (pressure > 0) {
-                        if (tectPlates[plateOrigin].Oceanic == tectPlates[plateNeighbor].Oceanic) {
-                            // same plate type, directly colliding
-                            WorldData.WorldDict[tile].Elevation = Mathf.Max(tectPlates[plateOrigin].DesiredElevation, tectPlates[plateNeighbor].DesiredElevation);
-                            if (tectPlates[plateOrigin].Oceanic) {
-                                WorldData.WorldDict[tile].Elevation += (int)(pressure * 0.25f);
+                        // map pressure to elevation, THIS COULD USE A LOT OF TWEAKING
+                        if (pressure > 0) {
+                            if (tectPlates[plateOrigin].Oceanic == tectPlates[plateNeighbor].Oceanic) {
+                                // same plate type, directly colliding
+                                WorldData.WorldDict[tile].Elevation = Mathf.Max(tectPlates[plateOrigin].DesiredElevation, tectPlates[plateNeighbor].DesiredElevation);
+                                if (tectPlates[plateOrigin].Oceanic) {
+                                    WorldData.WorldDict[tile].Elevation += (int)(pressure * 0.25f);
+                                }
+                                else {
+                                    WorldData.WorldDict[tile].Elevation += (int)(pressure * 1.55f);
+                                }
+                            }
+                            else if (tectPlates[plateOrigin].Oceanic == true && tectPlates[plateNeighbor].Oceanic == false) {
+                                // this is ocean, neighbor is land
+                                WorldData.WorldDict[tile].Elevation = Mathf.Max(tectPlates[plateOrigin].DesiredElevation, tectPlates[plateNeighbor].DesiredElevation);
+                                WorldData.WorldDict[tile].Elevation += (int)(-pressure * 0.3f);
+                            }
+                            else if (tectPlates[plateOrigin].Oceanic == false && tectPlates[plateNeighbor].Oceanic == true) {
+                                // this is land, neighbor is ocean
+                                WorldData.WorldDict[tile].Elevation = Mathf.Min(tectPlates[plateOrigin].DesiredElevation, tectPlates[plateNeighbor].DesiredElevation);
+                                WorldData.WorldDict[tile].Elevation += (int)(pressure * 0.3f);
+                            }
+                        }
+                        else if (pressure < 0 && WorldData.WorldDict[tile].Elevation == -1000) {
+                            if (tectPlates[plateOrigin].Oceanic != tectPlates[plateNeighbor].Oceanic) {
+                                WorldData.WorldDict[tile].Elevation = (tectPlates[plateOrigin].DesiredElevation + tectPlates[plateNeighbor].DesiredElevation) / 2;
+                                WorldData.WorldDict[tile].Elevation += (int)Mathf.Abs(pressure * (tectPlates[plateOrigin].Oceanic ? 0.15f : 0.1f));
                             }
                             else {
-                                WorldData.WorldDict[tile].Elevation += (int)(pressure * 1.45f);
+                                if (tectPlates[plateOrigin].Oceanic) {
+                                    WorldData.WorldDict[tile].Elevation = Mathf.Max(tectPlates[plateOrigin].DesiredElevation, tectPlates[plateNeighbor].DesiredElevation);
+                                    WorldData.WorldDict[tile].Elevation += (int)(Mathf.Abs(pressure) * 0.05f);
+                                }
+                                else {
+                                    WorldData.WorldDict[tile].Elevation = (tectPlates[plateOrigin].DesiredElevation + tectPlates[plateNeighbor].DesiredElevation) / 2;
+                                    WorldData.WorldDict[tile].Elevation += (int)(pressure * 0.2f);
+                                }
                             }
-                        }
-                        else if (tectPlates[plateOrigin].Oceanic == true && tectPlates[plateNeighbor].Oceanic == false) {
-                            // this is ocean, neighbor is land
-                            WorldData.WorldDict[tile].Elevation = Mathf.Max(tectPlates[plateOrigin].DesiredElevation, tectPlates[plateNeighbor].DesiredElevation);
-                            WorldData.WorldDict[tile].Elevation += (int)(-pressure * 0.3f);
-                        }
-                        else if (tectPlates[plateOrigin].Oceanic == false && tectPlates[plateNeighbor].Oceanic == true) {
-                            // this is land, neighbor is ocean
-                            WorldData.WorldDict[tile].Elevation = Mathf.Min(tectPlates[plateOrigin].DesiredElevation, tectPlates[plateNeighbor].DesiredElevation);
-                            WorldData.WorldDict[tile].Elevation += (int)(pressure * 0.3f);
-                        }
-                    }
-                    else if (pressure < 0 && WorldData.WorldDict[tile].Elevation == 0) {
-                        if (tectPlates[plateOrigin].Oceanic != tectPlates[plateNeighbor].Oceanic) {
-                            WorldData.WorldDict[tile].Elevation = (tectPlates[plateOrigin].DesiredElevation + tectPlates[plateNeighbor].DesiredElevation) / 2;
-                            WorldData.WorldDict[tile].Elevation += (int)Mathf.Abs(pressure * (tectPlates[plateOrigin].Oceanic ? 0.15f : 0.1f));
                         }
                         else {
-                            if (tectPlates[plateOrigin].Oceanic) {
-                                WorldData.WorldDict[tile].Elevation = Mathf.Max(tectPlates[plateOrigin].DesiredElevation, tectPlates[plateNeighbor].DesiredElevation);
-                                WorldData.WorldDict[tile].Elevation += (int)(Mathf.Abs(pressure) * 0.05f);
-                            }
-                            else {
-                                WorldData.WorldDict[tile].Elevation = (tectPlates[plateOrigin].DesiredElevation + tectPlates[plateNeighbor].DesiredElevation) / 2;
-                                WorldData.WorldDict[tile].Elevation += (int)(pressure * 0.2f);
-                            }
+                            WorldData.WorldDict[tile].Elevation = (tectPlates[plateOrigin].DesiredElevation + tectPlates[plateNeighbor].DesiredElevation) / 2;
                         }
+
+                    }
+                    // clamp values
+                    if (WorldData.WorldDict[tile].Elevation < tectPlates[plateOrigin].MinElevation) {
+                        WorldData.WorldDict[tile].Elevation = tectPlates[plateOrigin].MinElevation;
+                    }
+                    else if (WorldData.WorldDict[tile].Elevation > tectPlates[plateOrigin].MaxElevation) {
+                        WorldData.WorldDict[tile].Elevation = tectPlates[plateOrigin].MaxElevation;
                     }
 
                 }
-                // clamp values
-                if (WorldData.WorldDict[tile].Elevation < tectPlates[plateOrigin].MinElevation) {
-                    WorldData.WorldDict[tile].Elevation = tectPlates[plateOrigin].MinElevation;
-                }
-                else if (WorldData.WorldDict[tile].Elevation > tectPlates[plateOrigin].MaxElevation) {
-                    WorldData.WorldDict[tile].Elevation = tectPlates[plateOrigin].MaxElevation;
-                }
-
             }
 
-            foreach(CubeCoordinates coords in WorldData.WorldDict.Keys) {
-                if(WorldData.WorldDict[coords].Elevation == 0) {
-
-                    // find closest boundary
-                    Dictionary<CubeCoordinates, int> bTiles = new Dictionary<CubeCoordinates, int>();
-                    for(HexDirection d = HexDirection.N; d <= HexDirection.NW; d++) {
-                        var bTile = coords.GetNeighbor(d);
-                        var distance = 1;
-                        while(!boundaryTiles.TryGetValue(bTile, out bool _)) {
-                            bTile = bTile.GetNeighbor(d);
-                            distance++;
+            // smoothing
+            // I initially left this out in the refactor
+            // But it seems to be necessary with how imprecise the above calculations are
+            // If the consistency of the plate interactions can be improved, smoothing may no longer be necessary
+            var smoothingPasses = 4;
+            while (smoothingPasses > 0) {
+                foreach(WorldPlate plate in tectPlates.Values) {
+                    foreach (CubeCoordinates tile in plate.BoundaryTiles) {
+                        var boundarySmoothedElevation = WorldData.WorldDict[tile].Elevation;
+                        var boundarySmoothing = 1;
+                        if (WorldData.WorldDict[tile].Elevation >= 0) {
+                            for (HexDirection d = HexDirection.N; d <= HexDirection.NW; d++) {
+                                if (WorldData.WorldDict.TryGetValue(tile.GetNeighbor(d), out WorldTile value)) {
+                                    if (value.Elevation > WorldData.WorldDict[tile].Elevation || (value.Elevation - WorldData.WorldDict[tile].Elevation) > -52) {
+                                        boundarySmoothedElevation += value.Elevation;
+                                        boundarySmoothing++;
+                                    }
+                                }
+                            }
                         }
-                        bTiles[bTile] = distance;
+                        boundarySmoothedElevation /= boundarySmoothing;
+                        WorldData.WorldDict[tile].Elevation = boundarySmoothedElevation;
                     }
-                    Dictionary<CubeCoordinates, int> closestBTiles = new Dictionary<CubeCoordinates, int>();
-                    CubeCoordinates far = new CubeCoordinates();
-                    CubeCoordinates far2 = new CubeCoordinates();
-                    foreach(CubeCoordinates tile in bTiles.Keys) {
-                        if(far.Equals(new CubeCoordinates()) || bTiles[tile] > bTiles[far]) {
-                            far = tile;
-                        } else if(far2.Equals(new CubeCoordinates()) || bTiles[tile] > bTiles[far2]) {
-                            far2 = tile;
+                }
+                smoothingPasses--;
+            }
+
+            // this is very inefficient (no longer super, just very)
+            // now it only checks its own plate, not every tile, at least lol
+            // still could be way better
+            // this is a very significant part of the loading time, and could be improved drastically
+            foreach (CubeCoordinates coords in WorldData.WorldDict.Keys) {
+                if(WorldData.WorldDict[coords].Elevation == -1000) {
+
+                    var first = tectPlates[WorldData.WorldDict[coords].PlateCoords].BoundaryTiles[0];
+                    CubeCoordinates[] closestBTiles = new CubeCoordinates[] {
+                            first,
+                            first,
+                            first,
+                            first
+                        };
+                    foreach (CubeCoordinates bTile in tectPlates[WorldData.WorldDict[coords].PlateCoords].BoundaryTiles) {
+                        if(WorldData.WorldDict[bTile].PlateCoords.Equals(WorldData.WorldDict[coords].PlateCoords)) {
+                            if (CubeCoordinates.DistanceBetween(bTile, coords) < CubeCoordinates.DistanceBetween(closestBTiles[0], coords)) {
+                                closestBTiles[0] = bTile;
+                            }
                         }
                     }
-                    bTiles.Remove(far);
-                    bTiles.Remove(far2);
 
-                    int bDistance = 0;
-                    int bElevation = 0;
-                    foreach(CubeCoordinates tile in bTiles.Keys) {
-                        bElevation += WorldData.WorldDict[tile].Elevation;
-                        bDistance += bTiles[tile];
+                    foreach (CubeCoordinates bTile in tectPlates[WorldData.WorldDict[coords].PlateCoords].BoundaryTiles) {
+                        if (WorldData.WorldDict[bTile].PlateCoords.Equals(WorldData.WorldDict[coords].PlateCoords)) {
+                            if (!bTile.Equals(closestBTiles[0])) {
+                                if (CubeCoordinates.DistanceBetween(bTile, coords) < CubeCoordinates.DistanceBetween(closestBTiles[1], coords)) {
+                                    closestBTiles[1] = bTile;
+                                }
+                            }
+                        }
                     }
-                    bDistance = bDistance / bTiles.Count;
-                    bElevation = bElevation / bTiles.Count;
+
+                    foreach (CubeCoordinates bTile in tectPlates[WorldData.WorldDict[coords].PlateCoords].BoundaryTiles) {
+                        if (WorldData.WorldDict[bTile].PlateCoords.Equals(WorldData.WorldDict[coords].PlateCoords)) {
+                            if (!bTile.Equals(closestBTiles[0]) && !bTile.Equals(closestBTiles[1])) {
+                                if (CubeCoordinates.DistanceBetween(bTile, coords) < CubeCoordinates.DistanceBetween(closestBTiles[2], coords)) {
+                                    closestBTiles[2] = bTile;
+                                }
+                            }
+                        }
+                    }
+
+                    foreach (CubeCoordinates bTile in tectPlates[WorldData.WorldDict[coords].PlateCoords].BoundaryTiles) {
+                        if (WorldData.WorldDict[bTile].PlateCoords.Equals(WorldData.WorldDict[coords].PlateCoords)) {
+                            if (!bTile.Equals(closestBTiles[0]) && !bTile.Equals(closestBTiles[1]) && !bTile.Equals(closestBTiles[2])) {
+                                if (CubeCoordinates.DistanceBetween(bTile, coords) < CubeCoordinates.DistanceBetween(closestBTiles[3], coords)) {
+                                    closestBTiles[3] = bTile;
+                                }
+                            }
+                        }
+                    }
+
+                    var bDistance = (CubeCoordinates.DistanceBetween(closestBTiles[0], coords)
+                        + CubeCoordinates.DistanceBetween(closestBTiles[1], coords)
+                        + CubeCoordinates.DistanceBetween(closestBTiles[2], coords)
+                        + CubeCoordinates.DistanceBetween(closestBTiles[3], coords)) / 4;
+                    var bElevation = (WorldData.WorldDict[closestBTiles[0]].Elevation
+                        + WorldData.WorldDict[closestBTiles[1]].Elevation
+                        + WorldData.WorldDict[closestBTiles[2]].Elevation +
+                        WorldData.WorldDict[closestBTiles[3]].Elevation) / 4f;
 
                     WorldData.WorldDict[coords].Elevation = Mathf.RoundToInt(Coserp(tectPlates[WorldData.WorldDict[coords].PlateCoords].DesiredElevation,
                         bElevation, Mathf.Pow(args.UpliftDecay, bDistance)));
@@ -401,21 +372,21 @@ namespace EconSim
             }
 
             // some clamping, but with neighbor check to allow for small islands, but eliminate outliers
-            foreach (CubeCoordinates coords in WorldData.WorldDict.Keys) {
-                var plate = tectPlates[WorldData.WorldDict[coords].PlateCoords];
-                if (plate.Oceanic && WorldData.WorldDict[coords].Elevation > -1) {
-                    var neighborLand = false;
-                    for (HexDirection d = HexDirection.N; d <= HexDirection.NW; d++) {
-                        if (WorldData.WorldDict.TryGetValue(coords.GetNeighbor(d), out WorldTile value) && value.Elevation > -1) {
-                            neighborLand = true;
-                            break;
-                        }
-                    }
-                    if (!neighborLand) {
-                        WorldData.WorldDict[coords].Elevation = -1;
-                    }
-                }
-            }
+            //foreach (CubeCoordinates coords in WorldData.WorldDict.Keys) {
+            //    var plate = tectPlates[WorldData.WorldDict[coords].PlateCoords];
+            //    if (plate.Oceanic && WorldData.WorldDict[coords].Elevation > -1) {
+            //        var neighborLand = false;
+            //        for (HexDirection d = HexDirection.N; d <= HexDirection.NW; d++) {
+            //            if (WorldData.WorldDict.TryGetValue(coords.GetNeighbor(d), out WorldTile value) && value.Elevation > -1) {
+            //                neighborLand = true;
+            //                break;
+            //            }
+            //        }
+            //        if (!neighborLand) {
+            //            WorldData.WorldDict[coords].Elevation = -1;
+            //        }
+            //    }
+            //}
 
         }
 
@@ -463,16 +434,16 @@ namespace EconSim
                         WorldData.WorldDict[tile].Temperature = 30f;
                     }
                     else {
-                        WorldData.WorldDict[tile].Temperature = Coserp(-45f, 30f, Mathf.Pow(args.TemperatureDecay, CubeCoordinates.DistanceBetween(tile, closestEqTile)));
+                        WorldData.WorldDict[tile].Temperature = Mathf.Lerp(-45f, 30f, Mathf.Pow(args.TemperatureDecay, CubeCoordinates.DistanceBetween(tile, closestEqTile)));
                     }
                 }
 
                 // elevation effect
-                if (WorldData.WorldDict[tile].Elevation > 20) {
+                if (WorldData.WorldDict[tile].Elevation > 30) {
                     var tempChange = Mathf.Lerp(-40f, 0f, Mathf.Pow(args.TemperatureDecayElevation, WorldData.WorldDict[tile].Elevation - 11));
                     WorldData.WorldDict[tile].Temperature = WorldData.WorldDict[tile].Temperature + tempChange;
                 }
-                else if (WorldData.WorldDict[tile].Elevation < -15) {
+                else if (WorldData.WorldDict[tile].Elevation < -20) {
                     var tempChange = Mathf.Lerp(-7.5f, 0f, Mathf.Pow(args.TemperatureDecayElevation - 1, Mathf.Abs(WorldData.WorldDict[tile].Elevation)));
                     WorldData.WorldDict[tile].Temperature = WorldData.WorldDict[tile].Temperature + tempChange;
                 }
@@ -494,7 +465,7 @@ namespace EconSim
             
             // could be changed later to use WorldTile.MaxHumidity, but id like to keep these separate atm
             foreach(CubeCoordinates tile in WorldData.WorldDict.Keys) {
-                var rHumidity = WorldData.WorldDict[tile].IsUnderwater ? 1.2f : 0.1f;
+                var rHumidity = WorldData.WorldDict[tile].IsUnderwater ? 6f : 0.15f;
                 var hCap = WorldData.WorldDict[tile].Temperature > 5 ? WorldData.WorldDict[tile].Temperature * 1.1f : 5.5f;
                 WorldData.WorldDict[tile].Humidity = rHumidity * hCap;
             }
@@ -582,15 +553,15 @@ namespace EconSim
                     var mod = 0f;
                     if (el < 0) el = 0;
                     if (el < 4) {
-                        mod = 1.3f;
+                        mod = 1.2f;
                     }
-                    else if (el < 20) {
-                        mod = 1f + Mathf.InverseLerp(4, 19, el) / 2;
+                    else if (el < 30) {
+                        mod = 1f + Mathf.InverseLerp(4, 29, el) / 4;
                     }
                     else {
-                        mod = 1.5f + Mathf.InverseLerp(20, 40, el);
+                        mod = 1.25f + Mathf.InverseLerp(30, 60, el) / 2;
                     }
-                    if (mod != 0f) {
+                    if (mod > 0f) {
                         mag *= mod;
                     }
                     WorldData.WorldDict[tile].Wind = new Tuple<int, float>(dir, mag);
@@ -606,23 +577,20 @@ namespace EconSim
                 foreach(CubeCoordinates tile in WorldData.WorldDict.Keys) {
                     var dir = WorldData.WorldDict[tile].Wind.Item1;
                     var mag = WorldData.WorldDict[tile].Wind.Item2;
-                    var hMax = WorldData.WorldDict[tile].Temperature > 5 ? WorldData.WorldDict[tile].Temperature * 1.1f : 5.5f;
+                    var hMax = WorldData.WorldDict[tile].Temperature > 10 ? WorldData.WorldDict[tile].Temperature * 1.1f : 11f;
 
-                    if (mag < 5f) {
-                        mag = 5f;
+                    if (mag < 10f) {
+                        mag = 10f;
                     }
                     if (mag > 0) {
                         var hChange = 0f;
-                        if(WorldData.WorldDict[tile].Humidity > hMax) {
-                            hChange += WorldData.WorldDict[tile].Humidity - hMax;
-                        }
-                        hChange += (mag / 100f) * 0.85f * WorldData.WorldDict[tile].Humidity;
-                        WorldData.WorldDict[tile].Humidity -= hChange * Mathf.Lerp(1f, .75f, (mag / 100f)); // doesnt take all humidity, based on wind speed TESTING
+                        hChange += (mag / 100f) * 0.65f * WorldData.WorldDict[tile].Humidity;
+                        WorldData.WorldDict[tile].Humidity -= hChange * Mathf.Lerp(1f, .9f, (mag / 100f)); // doesnt take all humidity, based on wind speed TESTING
                         if (dir >= -90 && dir < -45) {
                             // determine how much to push where
                             var nw = 0.5f;
-                            var t = Mathf.InverseLerp(-90, -45, dir);
-                            nw += Mathf.Lerp(0f, 0.5f, t);
+                            var t = Mathf.InverseLerp(-90, -45, dir) / 2;
+                            nw += t;
                             var sw = 1 - nw;
                             var hcNW = nw * hChange;
                             var hcSW = sw * hChange;
@@ -741,13 +709,6 @@ namespace EconSim
                         }
                     }
 
-                    // create precipitation
-                    if(!WorldData.WorldDict[tile].IsUnderwater) {
-                        if (WorldData.WorldDict[tile].Humidity > hMax) {
-                            WorldData.WorldDict[tile].Precipitation += WorldData.WorldDict[tile].Humidity - hMax + (hMax * 0.1f);
-                        }
-                    }
-
                 }
 
                 // humidity smoothing
@@ -764,18 +725,20 @@ namespace EconSim
                     WorldData.WorldDict[tile].Humidity = smoothedHumidity;
                 }
 
-            }
-
-            // dump remaining humidity
-            foreach(CubeCoordinates tile in WorldData.WorldDict.Keys) {
-                var hMax = WorldData.WorldDict[tile].Temperature > 5 ? WorldData.WorldDict[tile].Temperature * 1.1f : 5.5f;
-                if (!WorldData.WorldDict[tile].IsUnderwater) {
-                    if (WorldData.WorldDict[tile].Humidity > hMax) {
-                        WorldData.WorldDict[tile].Precipitation += WorldData.WorldDict[tile].Humidity - hMax + (hMax * 0.1f);
+                // create precipitation
+                if(i % 3 == 1) {
+                    foreach (CubeCoordinates tile in WorldData.WorldDict.Keys) {
+                        var hMax = WorldData.WorldDict[tile].Temperature > 10 ? WorldData.WorldDict[tile].Temperature * 1.1f : 11f;
+                        if (!WorldData.WorldDict[tile].IsUnderwater) {
+                            if (WorldData.WorldDict[tile].Humidity > hMax) {
+                                WorldData.WorldDict[tile].Precipitation += (WorldData.WorldDict[tile].Humidity - hMax) + (hMax * 0.1f);
+                                WorldData.WorldDict[tile].Humidity -= ((WorldData.WorldDict[tile].Humidity - hMax) + (hMax * 0.1f));
+                            }
+                        }
                     }
                 }
-            }
 
+            }
         }
 
         // climate assignment, based on temperature and precipitation
@@ -784,73 +747,79 @@ namespace EconSim
         private void AssignClimate() {
             foreach (CubeCoordinates tile in WorldData.WorldDict.Keys) {
                 if (WorldData.WorldDict[tile].Temperature > 20) {
-                    if (WorldData.WorldDict[tile].Humidity > 75) {
+                    if (WorldData.WorldDict[tile].Precipitation > 75) {
                         WorldData.WorldDict[tile].Terrain = TerrainType.TropRainForest;
                     }
-                    else if (WorldData.WorldDict[tile].Humidity <= 75 && WorldData.WorldDict[tile].Humidity > 30) {
+                    else if (WorldData.WorldDict[tile].Precipitation <= 75 && WorldData.WorldDict[tile].Precipitation > 30) {
                         WorldData.WorldDict[tile].Terrain = TerrainType.TropForest;
                     }
-                    else if (WorldData.WorldDict[tile].Humidity <= 30 && WorldData.WorldDict[tile].Humidity > 15) {
+                    else if (WorldData.WorldDict[tile].Precipitation <= 30 && WorldData.WorldDict[tile].Precipitation > 10) {
                         WorldData.WorldDict[tile].Terrain = TerrainType.Savanna;
                     }
-                    else if (WorldData.WorldDict[tile].Humidity <= 15) {
+                    else if (WorldData.WorldDict[tile].Precipitation <= 10) {
                         WorldData.WorldDict[tile].Terrain = TerrainType.SubtropDesert;
                     }
                 }
                 else if (WorldData.WorldDict[tile].Temperature <= 20 && WorldData.WorldDict[tile].Temperature > 10) {
-                    if (WorldData.WorldDict[tile].Humidity > 65) {
+                    if (WorldData.WorldDict[tile].Precipitation > 65) {
                         WorldData.WorldDict[tile].Terrain = TerrainType.TempRainForest;
                     }
-                    else if (WorldData.WorldDict[tile].Humidity <= 65 && WorldData.WorldDict[tile].Humidity > 30) {
+                    else if (WorldData.WorldDict[tile].Precipitation <= 65 && WorldData.WorldDict[tile].Precipitation > 30) {
                         WorldData.WorldDict[tile].Terrain = TerrainType.TempDecidForest;
                     }
-                    else if (WorldData.WorldDict[tile].Humidity <= 30 && WorldData.WorldDict[tile].Humidity > 10) {
+                    else if (WorldData.WorldDict[tile].Precipitation <= 30 && WorldData.WorldDict[tile].Precipitation > 10) {
                         WorldData.WorldDict[tile].Terrain = TerrainType.Woodland;
                     }
-                    else if (WorldData.WorldDict[tile].Humidity <= 10) {
+                    else if (WorldData.WorldDict[tile].Precipitation <= 10) {
                         WorldData.WorldDict[tile].Terrain = TerrainType.Grassland;
                     }
                 }
                 else if (WorldData.WorldDict[tile].Temperature <= 10 && WorldData.WorldDict[tile].Temperature > 4) {
-                    if (WorldData.WorldDict[tile].Humidity > 25) {
+                    if (WorldData.WorldDict[tile].Precipitation > 25) {
                         WorldData.WorldDict[tile].Terrain = TerrainType.TempDecidForest;
                     }
-                    else if (WorldData.WorldDict[tile].Humidity <= 25 && WorldData.WorldDict[tile].Humidity > 10) {
+                    else if (WorldData.WorldDict[tile].Precipitation <= 25 && WorldData.WorldDict[tile].Precipitation > 10) {
                         WorldData.WorldDict[tile].Terrain = TerrainType.Woodland;
                     }
-                    else if (WorldData.WorldDict[tile].Humidity <= 10) {
+                    else if (WorldData.WorldDict[tile].Precipitation <= 10) {
                         WorldData.WorldDict[tile].Terrain = TerrainType.Grassland;
                     }
                 }
                 else if (WorldData.WorldDict[tile].Temperature <= 4 && WorldData.WorldDict[tile].Temperature > -5) {
-                    if (WorldData.WorldDict[tile].Humidity > 25) {
+                    if (WorldData.WorldDict[tile].Precipitation > 25) {
                         WorldData.WorldDict[tile].Terrain = TerrainType.Taiga;
                     }
-                    else if (WorldData.WorldDict[tile].Humidity <= 25 && WorldData.WorldDict[tile].Humidity > 10) {
+                    else if (WorldData.WorldDict[tile].Precipitation <= 25 && WorldData.WorldDict[tile].Precipitation > 10) {
                         WorldData.WorldDict[tile].Terrain = TerrainType.Shrubland;
                     }
-                    else if (WorldData.WorldDict[tile].Humidity <= 10) {
-                        WorldData.WorldDict[tile].Terrain = TerrainType.SubtropDesert;
+                    else if (WorldData.WorldDict[tile].Precipitation <= 10) {
+                        WorldData.WorldDict[tile].Terrain = TerrainType.Desert;
                     }
                 }
                 else if (WorldData.WorldDict[tile].Temperature <= -5) {
                     WorldData.WorldDict[tile].Terrain = TerrainType.Tundra;
                 }
-                if (WorldData.WorldDict[tile].Elevation > 22) {
+                if (WorldData.WorldDict[tile].Elevation > 35) {
                     WorldData.WorldDict[tile].Terrain = TerrainType.Mountain;
                 }
-                else if (WorldData.WorldDict[tile].Elevation <= 22 && WorldData.WorldDict[tile].Elevation > 19) {
+                else if (WorldData.WorldDict[tile].Elevation <= 35 && WorldData.WorldDict[tile].Elevation > 32) {
                     WorldData.WorldDict[tile].Terrain = TerrainType.Hill;
                 }
-                else if (WorldData.WorldDict[tile].Elevation < 2) {
+                else if (WorldData.WorldDict[tile].Elevation < 0) {
                     WorldData.WorldDict[tile].Terrain = TerrainType.Sand;
                 }
+
+                if (WorldData.WorldDict[tile].Humidity < 0) {
+                    WorldData.WorldDict[tile].Terrain = TerrainType.Debug;
+                }
+
             }
         }
 
         private bool ValidInMap(CubeCoordinates c) {
-            CubeCoordinates max = CubeCoordinates.OffsetToCube(args.SizeX, args.SizeZ);
-            return (c.x < max.x && c.x >= 0) && (c.y > max.y && c.y <= 0) && (c.z < max.z && c.z >= 0);
+            //CubeCoordinates max = CubeCoordinates.OffsetToCube(args.SizeX, args.SizeZ);
+            //return (c.x < max.x && c.x >= 0) && (c.y > max.y && c.y <= 0) && (c.z < max.z && c.z >= 0);
+            return WorldData.WorldDict.TryGetValue(c, out WorldTile _);
         }
 
         // apply seed according to world args

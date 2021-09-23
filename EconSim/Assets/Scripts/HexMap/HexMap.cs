@@ -27,9 +27,9 @@ public class HexMap : MonoBehaviour {
     public static Color[] colors = {
         Color.blue,
         Color.HSVToRGB((107f/360f), 0.66f, 0.62f),
-        Color.grey,
-        Color.HSVToRGB((30f/360f), 1f, 0.59f),
-        Color.HSVToRGB((56f/360f), 0.89f, 0.96f),
+        Color.HSVToRGB(22f/360f, .34f, .31f), // mountains
+        Color.HSVToRGB(82f/360f, .44f, .56f), //Color.HSVToRGB((30f/360f), 1f, 0.59f), // hills
+        Color.HSVToRGB((55f/360f), 0.63f, 0.92f), // sand aka beaches
         // debug1-5
         Color.red,
         Color.magenta,
@@ -37,18 +37,18 @@ public class HexMap : MonoBehaviour {
         Color.cyan,
         Color.white,
         // terrain coloring
-        Color.HSVToRGB(117f/360f, .94f, 1), // tropical rain forest
-        Color.HSVToRGB(117f/360f, .94f, 0.66f), // tropical forest
-        Color.HSVToRGB(72f/360f, .95f, 0.87f), // savanna
-        Color.HSVToRGB(38f/360f, .96f, 1), // subtropical desert
-        Color.HSVToRGB(159f/360f, .95f, 1), // temperate rain forest
-        Color.HSVToRGB(107f/360f, .66f, .78f), // temperate decid forest
-        Color.HSVToRGB(107f/360f, .66f, .8f), // woodland
-        Color.HSVToRGB(107f/360f, .66f, .92f), // grassland
-        Color.HSVToRGB(59f/360f, .67f, .92f), //shrubland
+        Color.HSVToRGB(120f/360f, .75f, .93f), // tropical rain forest
+        Color.HSVToRGB(105f/360f, .54f, 0.96f), // tropical forest
+        Color.HSVToRGB(49f/360f, .67f, 0.95f), // savanna
+        Color.HSVToRGB(44f/360f, .84f, 1f), // subtropical desert
+        Color.HSVToRGB(132f/360f, .99f, .93f), // temperate rain forest
+        Color.HSVToRGB(113/360f, 1, .78f), // temperate decid forest
+        Color.HSVToRGB(58f/360f, 1f, .54f), // woodland
+        Color.HSVToRGB(66f/360f, 1, .76f), // grassland
+        Color.HSVToRGB(68f/360f, .99f, .93f), //shrubland
         Color.HSVToRGB(114f/360f, .97f, .55f), // taiga
-        Color.HSVToRGB(55f/360f, .95f, 1), // desert
-        Color.HSVToRGB(181f/360f, .95f, 1) // tundra
+        Color.HSVToRGB(51f/360f, .56f, 1), // desert
+        Color.HSVToRGB(182f/360f, .13f, .98f) // tundra
     };
 
     public HexMapChunk hexChunkPrefab;
@@ -94,10 +94,12 @@ public class HexMap : MonoBehaviour {
     void Update()
     {
         if(!mapExists) {
-            if (worldMap.Gen.progress >= 1f) {
+            if (worldMap.Gen.isDone) {
+                worldMap.worldData = worldMap.Gen.WorldData; // this should really be changed
                 CreateChunks();
                 CreateCells(worldMap.worldData);
                 mapExists = true;
+                worldMap.Gen.isDone = false;
             }
         }
     }
@@ -322,7 +324,8 @@ public class HexMap : MonoBehaviour {
             }
         }
         else if(debugMode == DebugMode.Humidity) {
-            var t = Mathf.InverseLerp(0f, 100f, wTile.Humidity);
+            var hMax = wTile.Temperature > 10 ? wTile.Temperature * 1.1f : 11f;
+            var t = Mathf.InverseLerp(0f, 100f, wTile.Humidity / hMax);
             cell.color = Color.Lerp(Color.white, Color.blue, t);
         }
         else if(debugMode == DebugMode.Precipitation) {
@@ -336,7 +339,7 @@ public class HexMap : MonoBehaviour {
 
         // text label
         //cell.label = CreateCellLabel(pos, wTile);
-        cell.label = CreateCellLabelT(pos, wTile, wTile.Terrain.ToString());
+        cell.label = CreateCellLabelT(pos, wTile, "");
 
         // wind debug
         if(debugMode == DebugMode.Wind) {

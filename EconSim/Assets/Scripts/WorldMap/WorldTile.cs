@@ -34,7 +34,7 @@ namespace EconSim {
     public class WorldTile {
 
         // this is to try coloring for debugging but it doesnt work well
-        public static float MaxPrecipitation = 0f;
+        public static float MaxPrecipitation;
 
         public CubeCoordinates Coordinates;
 

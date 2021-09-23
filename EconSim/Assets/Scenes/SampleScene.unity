@@ -148,7 +148,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 243360149}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: 50, y: 0, z: 50}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children:
   - {fileID: 963194228}
@@ -443,20 +443,20 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   hexMap: {fileID: 0}
   generatorArgs:
-    WorldSeed: 8320203
+    WorldSeed: 1528972
     StringSeed: 
     UseStringSeed: 0
     RandomizeSeed: 1
-    SizeChunksX: 40
-    SizeChunksZ: 20
+    SizeChunksX: 90
+    SizeChunksZ: 45
     OceanFrequency: 0.55
-    NumPlates: 10
+    NumPlates: 30
     PlateSpreadDecay: 0.99975
-    PlateMotionScaleFactor: 0.25
-    UpliftDecay: 0.739
-    TemperatureDecay: 0.9905
+    PlateMotionScaleFactor: 0.45
+    UpliftDecay: 0.8
+    TemperatureDecay: 0.99335
     TemperatureDecayElevation: 0.888
-    WeatherPasses: 10
+    WeatherPasses: 40
 --- !u!114 &1160655035
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -470,7 +470,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   defaultColor: {r: 1, g: 1, b: 1, a: 1}
-  debugMode: 3
+  debugMode: 0
   hexChunkPrefab: {fileID: 2579854813966232673, guid: c31485bdfd97a8a4dbbf12dff1434911, type: 3}
   hexMeshCellPrefab: {fileID: 1331116183330477846, guid: da05030600a77ad4697453022410e7e9, type: 3}
   cellLabelPrefab: {fileID: 5766728718376711944, guid: 3c7df4830ed111f43abee43d206cd82c, type: 3}
