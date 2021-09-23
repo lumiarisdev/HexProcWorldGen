@@ -148,7 +148,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 243360149}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 50, y: 0, z: 50}
+  m_LocalPosition: {x: 200, y: 0, z: 200}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children:
   - {fileID: 963194228}
@@ -447,16 +447,16 @@ MonoBehaviour:
     StringSeed: 
     UseStringSeed: 0
     RandomizeSeed: 1
-    SizeChunksX: 90
-    SizeChunksZ: 45
-    OceanFrequency: 0.55
-    NumPlates: 30
+    SizeChunksX: 100
+    SizeChunksZ: 50
+    OceanFrequency: 0.6
+    NumPlates: 20
     PlateSpreadDecay: 0.99975
-    PlateMotionScaleFactor: 0.45
-    UpliftDecay: 0.8
-    TemperatureDecay: 0.99335
-    TemperatureDecayElevation: 0.888
-    WeatherPasses: 40
+    PlateMotionScaleFactor: 0.325
+    UpliftDecay: 0.89
+    TemperatureDecay: 0.99425
+    TemperatureDecayElevation: 0.889
+    WeatherPasses: 50
 --- !u!114 &1160655035
 MonoBehaviour:
   m_ObjectHideFlags: 0

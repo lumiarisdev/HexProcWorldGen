@@ -85,6 +85,8 @@ public class HUDHandler : MonoBehaviour {
     private void Update() {
         if (wMap.Gen.isDone && !mapLoaded) {
             startPanel.RemoveFromHierarchy();
+            seedDisplay.style.display = DisplayStyle.Flex;
+            inspector.style.display = DisplayStyle.Flex;
             seed.text = "Seed: " + wMap.generatorArgs.WorldSeed.ToString();
             maxPrecip.text = EconSim.WorldTile.MaxPrecipitation.ToString();
             mapLoaded = true;

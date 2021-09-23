@@ -41,7 +41,6 @@ namespace EconSim {
             new CubeCoordinates(-1, 0, 1)  // 1 move NW
         };
 
-        // no idea if this works
         public static CubeCoordinates FromPosition(Vector3 pos) {
             var x = pos.x / (HexMetrics.outerRadius * 2f * 0.75f);
             var z = pos.z / (Mathf.Sqrt(3) * HexMetrics.outerRadius);

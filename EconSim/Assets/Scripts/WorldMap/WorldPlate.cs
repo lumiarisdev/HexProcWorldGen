@@ -29,7 +29,7 @@ namespace EconSim
         }
         public int MaxElevation {
             get {
-                return 70;
+                return 80;
             }
         }
 

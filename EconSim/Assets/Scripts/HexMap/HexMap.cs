@@ -27,8 +27,8 @@ public class HexMap : MonoBehaviour {
     public static Color[] colors = {
         Color.blue,
         Color.HSVToRGB((107f/360f), 0.66f, 0.62f),
-        Color.HSVToRGB(22f/360f, .34f, .31f), // mountains
-        Color.HSVToRGB(82f/360f, .44f, .56f), //Color.HSVToRGB((30f/360f), 1f, 0.59f), // hills
+        Color.gray, //Color.HSVToRGB(22f/360f, .34f, .31f), // mountains
+        Color.HSVToRGB((30f/360f), 1f, 0.59f), // hills Color.HSVToRGB(82f/360f, .44f, .56f)
         Color.HSVToRGB((55f/360f), 0.63f, 0.92f), // sand aka beaches
         // debug1-5
         Color.red,

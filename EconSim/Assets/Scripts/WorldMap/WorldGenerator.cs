@@ -15,11 +15,16 @@ namespace EconSim
         public float progress;
         public bool isDone;
 
+        private ComputeShader computeShader;
+
         public WorldGenerator(WorldArgs _args) {
             WorldData = new WorldMapData();
             args = _args;
             progress = 0f;
             isDone = false;
+
+            computeShader = Resources.Load<ComputeShader>("Assets/Scripts/WorldMap/GeneratorComputeSahder.compute");
+
         }
 
         public static WorldMapData GenerateWorld(WorldArgs _args) {
@@ -145,7 +150,7 @@ namespace EconSim
                 ffDeqs[plateOrigin].AddToBack(plateOrigin);
                 visited[plateOrigin] = new Dictionary<CubeCoordinates, bool>();
                 visited[plateOrigin][plateOrigin] = true;
-                chance[plateOrigin] = 60f; //100f;
+                chance[plateOrigin] = 50f; //100f;
 
             }
 
@@ -304,66 +309,29 @@ namespace EconSim
                 smoothingPasses--;
             }
 
-            // this is very inefficient (no longer super, just very)
-            // now it only checks its own plate, not every tile, at least lol
-            // still could be way better
-            // this is a very significant part of the loading time, and could be improved drastically
+            // testing a more efficient solution for this
+            // we could improve further by sending the distance calc loop
+            // to the gpu to run in parallel
             foreach (CubeCoordinates coords in WorldData.WorldDict.Keys) {
                 if(WorldData.WorldDict[coords].Elevation == -1000) {
 
-                    var first = tectPlates[WorldData.WorldDict[coords].PlateCoords].BoundaryTiles[0];
-                    CubeCoordinates[] closestBTiles = new CubeCoordinates[] {
-                            first,
-                            first,
-                            first,
-                            first
-                        };
-                    foreach (CubeCoordinates bTile in tectPlates[WorldData.WorldDict[coords].PlateCoords].BoundaryTiles) {
-                        if(WorldData.WorldDict[bTile].PlateCoords.Equals(WorldData.WorldDict[coords].PlateCoords)) {
-                            if (CubeCoordinates.DistanceBetween(bTile, coords) < CubeCoordinates.DistanceBetween(closestBTiles[0], coords)) {
-                                closestBTiles[0] = bTile;
-                            }
-                        }
+                    Dictionary<CubeCoordinates, int> distance = new Dictionary<CubeCoordinates, int>();
+                    foreach(CubeCoordinates bTile in tectPlates[WorldData.WorldDict[coords].PlateCoords].BoundaryTiles) {
+                        distance[bTile] = CubeCoordinates.DistanceBetween(bTile, coords);
                     }
 
-                    foreach (CubeCoordinates bTile in tectPlates[WorldData.WorldDict[coords].PlateCoords].BoundaryTiles) {
-                        if (WorldData.WorldDict[bTile].PlateCoords.Equals(WorldData.WorldDict[coords].PlateCoords)) {
-                            if (!bTile.Equals(closestBTiles[0])) {
-                                if (CubeCoordinates.DistanceBetween(bTile, coords) < CubeCoordinates.DistanceBetween(closestBTiles[1], coords)) {
-                                    closestBTiles[1] = bTile;
-                                }
-                            }
-                        }
+                    var distList = distance.ToList();
+                    distList.Sort((x, y) => x.Value.CompareTo(y.Value));
+
+                    int bDistance = 0;
+                    int bElevation = 0;
+                    for(int i = 0; i < 4; i++) {
+                        bDistance += distList[i].Value;
+                        bElevation += WorldData.WorldDict[distList[i].Key].Elevation;
                     }
 
-                    foreach (CubeCoordinates bTile in tectPlates[WorldData.WorldDict[coords].PlateCoords].BoundaryTiles) {
-                        if (WorldData.WorldDict[bTile].PlateCoords.Equals(WorldData.WorldDict[coords].PlateCoords)) {
-                            if (!bTile.Equals(closestBTiles[0]) && !bTile.Equals(closestBTiles[1])) {
-                                if (CubeCoordinates.DistanceBetween(bTile, coords) < CubeCoordinates.DistanceBetween(closestBTiles[2], coords)) {
-                                    closestBTiles[2] = bTile;
-                                }
-                            }
-                        }
-                    }
-
-                    foreach (CubeCoordinates bTile in tectPlates[WorldData.WorldDict[coords].PlateCoords].BoundaryTiles) {
-                        if (WorldData.WorldDict[bTile].PlateCoords.Equals(WorldData.WorldDict[coords].PlateCoords)) {
-                            if (!bTile.Equals(closestBTiles[0]) && !bTile.Equals(closestBTiles[1]) && !bTile.Equals(closestBTiles[2])) {
-                                if (CubeCoordinates.DistanceBetween(bTile, coords) < CubeCoordinates.DistanceBetween(closestBTiles[3], coords)) {
-                                    closestBTiles[3] = bTile;
-                                }
-                            }
-                        }
-                    }
-
-                    var bDistance = (CubeCoordinates.DistanceBetween(closestBTiles[0], coords)
-                        + CubeCoordinates.DistanceBetween(closestBTiles[1], coords)
-                        + CubeCoordinates.DistanceBetween(closestBTiles[2], coords)
-                        + CubeCoordinates.DistanceBetween(closestBTiles[3], coords)) / 4;
-                    var bElevation = (WorldData.WorldDict[closestBTiles[0]].Elevation
-                        + WorldData.WorldDict[closestBTiles[1]].Elevation
-                        + WorldData.WorldDict[closestBTiles[2]].Elevation +
-                        WorldData.WorldDict[closestBTiles[3]].Elevation) / 4f;
+                    bDistance /= 4;
+                    bElevation /= 4;
 
                     WorldData.WorldDict[coords].Elevation = Mathf.RoundToInt(Coserp(tectPlates[WorldData.WorldDict[coords].PlateCoords].DesiredElevation,
                         bElevation, Mathf.Pow(args.UpliftDecay, bDistance)));
@@ -465,7 +433,7 @@ namespace EconSim
             
             // could be changed later to use WorldTile.MaxHumidity, but id like to keep these separate atm
             foreach(CubeCoordinates tile in WorldData.WorldDict.Keys) {
-                var rHumidity = WorldData.WorldDict[tile].IsUnderwater ? 6f : 0.15f;
+                var rHumidity = WorldData.WorldDict[tile].IsUnderwater ? 7f : 0.15f;
                 var hCap = WorldData.WorldDict[tile].Temperature > 5 ? WorldData.WorldDict[tile].Temperature * 1.1f : 5.5f;
                 WorldData.WorldDict[tile].Humidity = rHumidity * hCap;
             }
@@ -739,6 +707,18 @@ namespace EconSim
                 }
 
             }
+
+            // dump remaining humidity
+            foreach (CubeCoordinates tile in WorldData.WorldDict.Keys) {
+                var hMax = WorldData.WorldDict[tile].Temperature > 10 ? WorldData.WorldDict[tile].Temperature * 1.1f : 11f;
+                if (!WorldData.WorldDict[tile].IsUnderwater) {
+                    if (WorldData.WorldDict[tile].Humidity > hMax) {
+                        WorldData.WorldDict[tile].Precipitation += (WorldData.WorldDict[tile].Humidity - hMax) + (hMax * 0.1f);
+                        WorldData.WorldDict[tile].Humidity -= ((WorldData.WorldDict[tile].Humidity - hMax) + (hMax * 0.1f));
+                    }
+                }
+            }
+
         }
 
         // climate assignment, based on temperature and precipitation
@@ -799,10 +779,10 @@ namespace EconSim
                 else if (WorldData.WorldDict[tile].Temperature <= -5) {
                     WorldData.WorldDict[tile].Terrain = TerrainType.Tundra;
                 }
-                if (WorldData.WorldDict[tile].Elevation > 35) {
+                if (WorldData.WorldDict[tile].Elevation > 38) {
                     WorldData.WorldDict[tile].Terrain = TerrainType.Mountain;
                 }
-                else if (WorldData.WorldDict[tile].Elevation <= 35 && WorldData.WorldDict[tile].Elevation > 32) {
+                else if (WorldData.WorldDict[tile].Elevation <= 38 && WorldData.WorldDict[tile].Elevation > 35) {
                     WorldData.WorldDict[tile].Terrain = TerrainType.Hill;
                 }
                 else if (WorldData.WorldDict[tile].Elevation < 0) {
