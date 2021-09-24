@@ -41,6 +41,16 @@ namespace EconSim {
             new CubeCoordinates(-1, 0, 1)  // 1 move NW
         };
 
+        public static CubeCoordinates FromPosition(Vector3 pos) {
+            var x = pos.x / (HexMetrics.outerRadius * 2f * 0.75f);
+            var z = pos.z / (Mathf.Sqrt(3) * HexMetrics.outerRadius);
+            z += (x / 2);
+            z -= (x * 0.5f);
+            int iX = Mathf.RoundToInt(x);
+            int iZ = Mathf.RoundToInt(z);
+            return OffsetToCube(iX, iZ);
+        }
+
         // THERES A LOT OF TRUNCATING GOING ON HERE
         public static CubeCoordinates Lerp(CubeCoordinates a, CubeCoordinates b, float h) {
             a.x += (int)((b.x - a.x) * h);

@@ -43,6 +43,8 @@ namespace EconSim
         [Range(0, 1)]
         public float TemperatureDecayElevation;
 
+        public int WeatherPasses;
+
     }
 
 }

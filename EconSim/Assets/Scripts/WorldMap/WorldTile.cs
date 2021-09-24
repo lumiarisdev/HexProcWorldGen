@@ -16,12 +16,25 @@ namespace EconSim {
         Debug2,
         Debug3,
         Debug4,
-        Debug5
+        Debug5,
+        TropRainForest,
+        TropForest,
+        Savanna,
+        SubtropDesert,
+        TempRainForest,
+        TempDecidForest,
+        Woodland,
+        Grassland,
+        Shrubland,
+        Taiga,
+        Desert,
+        Tundra
     }
 
     public class WorldTile {
 
-        public static float MaxPrecipitation = 0f;
+        // this is to try coloring for debugging but it doesnt work well
+        public static float MaxPrecipitation;
 
         public CubeCoordinates Coordinates;
 
