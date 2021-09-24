@@ -12,6 +12,7 @@ public class HUDHandler : MonoBehaviour {
 
     private Button generateButton;
     private Slider progressBar;
+    private TextField seedInput;
 
     //private Toggle terrain;
     //private Toggle humidity;
@@ -41,6 +42,12 @@ public class HUDHandler : MonoBehaviour {
         progressBar.SetEnabled(true);
 
         // generate world using coroutine
+        if(!seedInput.value.Equals("")) {
+            var b = int.TryParse(seedInput.value, out int r);
+            wMap.generatorArgs.WorldSeed = b ? r : Random.Range(0, int.MaxValue);
+            wMap.generatorArgs.RandomizeSeed = false;
+            wMap.Gen = new EconSim.WorldGenerator(wMap.generatorArgs);
+        }
         StartCoroutine(wMap.Gen.GenerateWorld());
 
     }
@@ -58,6 +65,7 @@ public class HUDHandler : MonoBehaviour {
 
         generateButton = rootVE.Q<Button>("generate");
         progressBar = rootVE.Q<Slider>("progress");
+        seedInput = rootVE.Q<VisualElement>("args-input").Q<TextField>("seed-input");
         generateButton.RegisterCallback<ClickEvent>(ev => GenerateButtonPressed());
 
         seed = seedDisplay.Q<Label>("seed");

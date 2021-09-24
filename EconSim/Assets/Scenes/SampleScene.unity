@@ -449,7 +449,7 @@ MonoBehaviour:
     RandomizeSeed: 1
     SizeChunksX: 100
     SizeChunksZ: 50
-    OceanFrequency: 0.6
+    OceanFrequency: 0.5
     NumPlates: 20
     PlateSpreadDecay: 0.99975
     PlateMotionScaleFactor: 0.325
