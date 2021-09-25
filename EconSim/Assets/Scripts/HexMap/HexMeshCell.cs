@@ -15,6 +15,26 @@ public class HexMeshCell : MonoBehaviour
     public Color color;
 
     public float waterLevel;
+    // true is in, out is false
+    Dictionary<HexDirection, bool> rivers;
+
+    public bool HasIncomingRiver {
+        get {
+            foreach(bool r in rivers.Values) {
+                if (r) return r;
+            }
+            return false;
+        }
+    }
+
+    public bool HasOutgoingRiver {
+        get {
+            foreach(bool r in rivers.Values) {
+                if (!r) return true;
+            }
+            return false;
+        }
+    }
 
     public bool IsUnderwater {
         get {

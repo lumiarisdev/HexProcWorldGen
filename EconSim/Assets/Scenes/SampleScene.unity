@@ -447,16 +447,16 @@ MonoBehaviour:
     StringSeed: 
     UseStringSeed: 0
     RandomizeSeed: 1
-    SizeChunksX: 100
-    SizeChunksZ: 50
-    OceanFrequency: 0.5
-    NumPlates: 20
-    PlateSpreadDecay: 0.99975
-    PlateMotionScaleFactor: 0.325
-    UpliftDecay: 0.89
-    TemperatureDecay: 0.99425
+    SizeChunksX: 80
+    SizeChunksZ: 40
+    OceanFrequency: 0.6
+    NumPlates: 27
+    PlateSpreadDecay: 0.9997
+    PlateMotionScaleFactor: 0.35
+    UpliftDecay: 0.9
+    TemperatureDecay: 0.9925
     TemperatureDecayElevation: 0.889
-    WeatherPasses: 50
+    WeatherPasses: 200
 --- !u!114 &1160655035
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -57,7 +57,7 @@ namespace EconSim {
         public CubeCoordinates PlateCoords;
         public bool IsUnderwater {
             get {
-                return Elevation <= 0;
+                return Elevation < 0;
             }
         }
         public float MaxHumidity {

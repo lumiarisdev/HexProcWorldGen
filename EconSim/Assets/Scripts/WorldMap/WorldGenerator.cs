@@ -479,7 +479,7 @@ namespace EconSim
                     }
                     // southern westerlies
                     else if (windCell.Equals(windCells[1])) {
-                        dir = 180;
+                        dir = 165;
                         var t = Mathf.InverseLerp(windCells[1].ToOffset().z, windCells[2].ToOffset().z, z);
                         dir = (int)Mathf.Lerp(dir, 105, t);
                         var magT = Mathf.InverseLerp(windCells[1].ToOffset().z, windCells[2].ToOffset().z, z);
@@ -488,21 +488,21 @@ namespace EconSim
                     // Southeasterly trades
                     else if (windCell.Equals(windCells[2])) {
                         var t = Mathf.InverseLerp(windCells[2].ToOffset().z, windCells[3].ToOffset().z, z);
-                        dir = (int)Mathf.Lerp(dir, -75, t);
+                        dir = (int)Mathf.Lerp(-15, -75, t);
                         var magT = Mathf.InverseLerp(windCells[3].ToOffset().z, windCells[2].ToOffset().z, z);
                         mag = Coserp(0f, 100f, magT) * magnitudeMult;
                     }
                     //northeasterly trades
                     else if (windCell.Equals(windCells[3])) {
                         var t = Mathf.InverseLerp(windCells[3].ToOffset().z, windCells[4].ToOffset().z, z);
-                        dir = 180;
+                        dir = 195;
                         dir = (int)Mathf.Lerp(270, dir, t);
                         mag = Coserp(0f, 100f, t) * magnitudeMult;
                     }
                     // northern westerlies
                     else if (windCell.Equals(windCells[4])) {
                         var t = Mathf.InverseLerp(windCells[4].ToOffset().z, windCells[5].ToOffset().z, z);
-                        dir = (int)Mathf.Lerp(75, dir, t);
+                        dir = (int)Mathf.Lerp(75, 15, t);
                         var magT = Mathf.InverseLerp(windCells[4].ToOffset().z, windCells[5].ToOffset().z, z);
                         mag = Coserp(0, 100, magT) * magnitudeMult;
                     } // north polar easterlies
@@ -552,7 +552,7 @@ namespace EconSim
                     }
                     if (mag > 0) {
                         var hChange = 0f;
-                        hChange += (mag / 100f) * 0.65f * WorldData.WorldDict[tile].Humidity;
+                        hChange += (mag / 100f) * 0.15f * WorldData.WorldDict[tile].Humidity;
                         WorldData.WorldDict[tile].Humidity -= hChange * Mathf.Lerp(1f, .9f, (mag / 100f)); // doesnt take all humidity, based on wind speed TESTING
                         if (dir >= -90 && dir < -45) {
                             // determine how much to push where
@@ -694,7 +694,7 @@ namespace EconSim
                 }
 
                 // create precipitation
-                if(i % 3 == 1) {
+                if(i % 20 == 1) {
                     foreach (CubeCoordinates tile in WorldData.WorldDict.Keys) {
                         var hMax = WorldData.WorldDict[tile].Temperature > 10 ? WorldData.WorldDict[tile].Temperature * 1.1f : 11f;
                         if (!WorldData.WorldDict[tile].IsUnderwater) {
@@ -779,10 +779,10 @@ namespace EconSim
                 else if (WorldData.WorldDict[tile].Temperature <= -5) {
                     WorldData.WorldDict[tile].Terrain = TerrainType.Tundra;
                 }
-                if (WorldData.WorldDict[tile].Elevation > 38) {
+                if (WorldData.WorldDict[tile].Elevation > 42) {
                     WorldData.WorldDict[tile].Terrain = TerrainType.Mountain;
                 }
-                else if (WorldData.WorldDict[tile].Elevation <= 38 && WorldData.WorldDict[tile].Elevation > 35) {
+                else if (WorldData.WorldDict[tile].Elevation <= 42 && WorldData.WorldDict[tile].Elevation > 38) {
                     WorldData.WorldDict[tile].Terrain = TerrainType.Hill;
                 }
                 else if (WorldData.WorldDict[tile].Elevation < 0) {
