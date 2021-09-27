@@ -38,49 +38,55 @@ namespace EconSim
             // apply seed
             ApplySeed();
 
-            progress += 1f / 8f;
+            progress += 1f / 9f;
             yield return null;
 
             // Create tile dictionary
             CreateTiles();
 
-            progress += 1f / 8f;
+            progress += 1f / 9f;
             yield return null;
 
             // generate heightmap
             GenerateHeightMap();
 
-            progress += 1f / 8f;
+            progress += 1f / 9f;
             yield return null;
 
             // generate temperature map
             GenerateTempMap();
 
-            progress += 1f / 8f;
+            progress += 1f / 9f;
             yield return null;
 
             // generate humidity map
             GenerateHumidityMap();
 
-            progress += 1f / 8f;
+            progress += 1f / 9f;
             yield return null;
 
             // generate wind map
             GenerateWindMap();
 
-            progress += 1f / 8f;
+            progress += 1f / 9f;
             yield return null;
 
             // run weather simulation
             SimulatePrecipitation();
 
-            progress += 1f / 8f;
+            progress += 1f / 9f;
             yield return null;
 
             // assign climate
             AssignClimate();
 
-            progress += 1f / 8f;
+            progress += 1f / 9f;
+            yield return null;
+
+            // generate rivers
+            GenerateRivers();
+
+            progress += 1f / 9f;
             yield return null;
 
             isDone = true;
@@ -130,8 +136,8 @@ namespace EconSim
                 tectPlates[plateOrigin] = new WorldPlate(plateOrigin);
                 tectPlates[plateOrigin].Oceanic = args.OceanFrequency > UnityEngine.Random.Range(0f, 1f);
                 tectPlates[plateOrigin].DesiredElevation = tectPlates[plateOrigin].Oceanic ?
-                    UnityEngine.Random.Range(-20, -5) :
-                    UnityEngine.Random.Range(5, 20);
+                    UnityEngine.Random.Range(-23, -5) :
+                    UnityEngine.Random.Range(8, 20);
                 CubeCoordinates driftPoint = plateOrigin;
                 while (driftPoint.Equals(plateOrigin)) {
                     rX = UnityEngine.Random.Range(0, args.SizeX);
@@ -241,13 +247,13 @@ namespace EconSim
                             }
                             else if (tectPlates[plateOrigin].Oceanic == true && tectPlates[plateNeighbor].Oceanic == false) {
                                 // this is ocean, neighbor is land
-                                WorldData.WorldDict[tile].Elevation = Mathf.Max(tectPlates[plateOrigin].DesiredElevation, tectPlates[plateNeighbor].DesiredElevation);
-                                WorldData.WorldDict[tile].Elevation += (int)(-pressure * 0.3f);
+                                WorldData.WorldDict[tile].Elevation = Mathf.Min(tectPlates[plateOrigin].DesiredElevation, tectPlates[plateNeighbor].DesiredElevation);
+                                WorldData.WorldDict[tile].Elevation += (int)(pressure * 0.1f);
                             }
                             else if (tectPlates[plateOrigin].Oceanic == false && tectPlates[plateNeighbor].Oceanic == true) {
                                 // this is land, neighbor is ocean
-                                WorldData.WorldDict[tile].Elevation = Mathf.Min(tectPlates[plateOrigin].DesiredElevation, tectPlates[plateNeighbor].DesiredElevation);
-                                WorldData.WorldDict[tile].Elevation += (int)(pressure * 0.3f);
+                                WorldData.WorldDict[tile].Elevation = Mathf.Max(tectPlates[plateOrigin].DesiredElevation, tectPlates[plateNeighbor].DesiredElevation);
+                                WorldData.WorldDict[tile].Elevation += (int)(pressure * 0.2f);
                             }
                         }
                         else if (pressure < 0 && WorldData.WorldDict[tile].Elevation == -1000) {
@@ -407,8 +413,9 @@ namespace EconSim
                 }
 
                 // elevation effect
-                if (WorldData.WorldDict[tile].Elevation > 30) {
-                    var tempChange = Mathf.Lerp(-40f, 0f, Mathf.Pow(args.TemperatureDecayElevation, WorldData.WorldDict[tile].Elevation - 11));
+                // id like to change this to more accurately reflect real world normal lapse rate
+                if (WorldData.WorldDict[tile].Elevation > 36) {
+                    var tempChange = Mathf.Lerp(-40f, 0f, Mathf.Pow(args.TemperatureDecayElevation, WorldData.WorldDict[tile].Elevation - 34));
                     WorldData.WorldDict[tile].Temperature = WorldData.WorldDict[tile].Temperature + tempChange;
                 }
                 else if (WorldData.WorldDict[tile].Elevation < -20) {
@@ -433,7 +440,7 @@ namespace EconSim
             
             // could be changed later to use WorldTile.MaxHumidity, but id like to keep these separate atm
             foreach(CubeCoordinates tile in WorldData.WorldDict.Keys) {
-                var rHumidity = WorldData.WorldDict[tile].IsUnderwater ? 7f : 0.15f;
+                var rHumidity = WorldData.WorldDict[tile].IsUnderwater ? 4.5f : 0.175f;
                 var hCap = WorldData.WorldDict[tile].Temperature > 5 ? WorldData.WorldDict[tile].Temperature * 1.1f : 5.5f;
                 WorldData.WorldDict[tile].Humidity = rHumidity * hCap;
             }
@@ -779,10 +786,10 @@ namespace EconSim
                 else if (WorldData.WorldDict[tile].Temperature <= -5) {
                     WorldData.WorldDict[tile].Terrain = TerrainType.Tundra;
                 }
-                if (WorldData.WorldDict[tile].Elevation > 42) {
+                if (WorldData.WorldDict[tile].Elevation > 48) {
                     WorldData.WorldDict[tile].Terrain = TerrainType.Mountain;
                 }
-                else if (WorldData.WorldDict[tile].Elevation <= 42 && WorldData.WorldDict[tile].Elevation > 38) {
+                else if (WorldData.WorldDict[tile].Elevation <= 48 && WorldData.WorldDict[tile].Elevation > 42) {
                     WorldData.WorldDict[tile].Terrain = TerrainType.Hill;
                 }
                 else if (WorldData.WorldDict[tile].Elevation < 0) {
@@ -794,6 +801,53 @@ namespace EconSim
                 }
 
             }
+        }
+
+        // rivers
+        private void GenerateRivers() {
+
+            var riverPrecipValues = new Dictionary<CubeCoordinates, float>();
+            var worldList = WorldData.WorldDict.Values.ToList();
+            worldList.Sort((x, y) => x.Elevation.CompareTo(y.Elevation));
+            foreach(WorldTile tile in worldList) {
+                riverPrecipValues[tile.Coordinates] = tile.Precipitation + (tile.Precipitation < 100 ? tile.Humidity : 0);
+            }
+            var riverPasses = 2;
+            for(int i = 0; i < 5; i++) {
+                foreach (WorldTile tile in worldList) {
+                    if(!tile.IsUnderwater) {
+                        var downhill = ValidInMap(tile.Coordinates.GetNeighbor(HexDirection.N)) ? HexDirection.N : HexDirection.S;
+                        for (HexDirection d = HexDirection.NE; d <= HexDirection.NW; d++) {
+                            if (ValidInMap(tile.Coordinates.GetNeighbor(d))) {
+                                if (WorldData.WorldDict[tile.Coordinates.GetNeighbor(downhill)].Elevation > WorldData.WorldDict[tile.Coordinates.GetNeighbor(d)].Elevation) {
+                                    downhill = d;
+                                }
+                                else if (WorldData.WorldDict[tile.Coordinates.GetNeighbor(downhill)].Elevation == WorldData.WorldDict[tile.Coordinates.GetNeighbor(d)].Elevation) {
+                                    downhill =
+                                        riverPrecipValues[tile.Coordinates.GetNeighbor(downhill)] < riverPrecipValues[tile.Coordinates.GetNeighbor(d)]
+                                        ? d : downhill;
+                                }
+                            }
+                        }
+                        riverPrecipValues[tile.Coordinates.GetNeighbor(downhill)] += riverPrecipValues[tile.Coordinates];
+                        riverPrecipValues[tile.Coordinates] = 0;
+                    }
+                }
+            }
+
+            var riverValues = new Dictionary<CubeCoordinates, int>();
+            foreach(CubeCoordinates tile in riverPrecipValues.Keys) {
+                riverValues[tile] = (int)(riverPrecipValues[tile] / 100F);
+            }
+            
+            foreach(CubeCoordinates tile in WorldData.WorldDict.Keys) {
+                if(!WorldData.WorldDict[tile].IsUnderwater) {
+                    if (riverValues[tile] > 0) {
+                        WorldData.WorldDict[tile].River = new River(riverValues[tile]);
+                    }
+                }   
+            }
+
         }
 
         private bool ValidInMap(CubeCoordinates c) {
@@ -1759,7 +1813,7 @@ namespace EconSim
         }
         
         /*
-         * Cosine interpolation
+         * Cosine interpolation 
          */
         float Coserp(float a,  float b, float t) {
             float t2;

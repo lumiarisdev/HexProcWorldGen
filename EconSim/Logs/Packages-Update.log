@@ -74,3 +74,11 @@ Update Mode: resetToDefaultDependencies
 The following packages were removed:
   com.unity.ui@1.0.0-preview.17
   com.unity.ui.builder@1.0.0-preview.17
+
+=== Sat Sep 25 08:28:13 2021
+
+Packages were changed.
+Update Mode: updateDependencies
+
+The following packages were updated:
+  com.unity.ide.vscode from version 1.2.3 to 1.2.4

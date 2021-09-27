@@ -143,6 +143,7 @@ public class HexMap : MonoBehaviour {
         if (debugMode == DebugMode.None) {
             // normal terrain
             hexMeshCells[tile.Coordinates].color = colors[(int)tile.Terrain];
+
         }
         else if (debugMode == DebugMode.Wind) {
 
@@ -272,6 +273,12 @@ public class HexMap : MonoBehaviour {
         if (debugMode == DebugMode.None) {
             // normal terrain
             cell.color = colors[(int)wTile.Terrain];
+
+            // rivers
+            if(wTile.River != null) {
+                cell.color = Color.blue;
+            }
+
         }
         else if(debugMode == DebugMode.Wind) {
 
@@ -329,8 +336,13 @@ public class HexMap : MonoBehaviour {
             cell.color = Color.Lerp(Color.white, Color.blue, t);
         }
         else if(debugMode == DebugMode.Precipitation) {
-            var t = Mathf.InverseLerp(0f, WorldTile.MaxPrecipitation, wTile.Precipitation);
-            cell.color = Color.Lerp(Color.white, Color.blue, t);
+            if (wTile.Precipitation > 100f) {
+                cell.color = Color.blue;
+            }
+            else {
+                var t = Mathf.InverseLerp(0f, 100f, wTile.Precipitation);
+                cell.color = Color.Lerp(Color.white, Color.blue, t);
+            }
         }
 
         // water level, will need changes later

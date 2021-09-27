@@ -31,6 +31,23 @@ namespace EconSim {
         Tundra
     }
 
+    public class River {
+        public int size;
+        public Tuple<HexDirection, HexDirection> flow;
+        public River(int s) {
+            size = s;
+        }
+        public River(int s, HexDirection i, HexDirection o) {
+            size = s;
+            flow = new Tuple<HexDirection, HexDirection>(i, o);
+        }
+        public River(int s, Tuple<HexDirection, HexDirection> f) {
+            size = s;
+            flow = f;
+        }
+    }
+
+
     public class WorldTile {
 
         // this is to try coloring for debugging but it doesnt work well
@@ -66,6 +83,8 @@ namespace EconSim {
                 return IsUnderwater ? 300f * (1f + Mathf.Lerp(-0.3f, 0.4f, t)) : 100f * (1f + Mathf.Lerp(-0.3f, 0.4f, t));
             }
         }
+
+        public River River;
 
         // public float Fertility;
         public TerrainType Terrain;
