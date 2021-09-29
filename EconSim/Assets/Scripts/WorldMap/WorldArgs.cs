@@ -44,6 +44,8 @@ namespace EconSim
         public float TemperatureDecayElevation;
 
         public int WeatherPasses;
+        [Range(0, 1)]
+        public float RiverCutoff;
 
     }
 

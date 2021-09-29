@@ -804,50 +804,61 @@ namespace EconSim
         }
 
         // rivers
+        /*
+         * To start, find a set of possible river origin points
+         * These would be high elevation, high precipitation tiles
+         * From there, we can drop a particle that will travel downhill
+         * As it moves, it will pick up precipitation, until it winds up in the ocean,
+         * or alternatively, setlling into a lake
+         */
+        [Range(0, 1)]
+        public float RiverCutoff;
         private void GenerateRivers() {
 
-            var riverPrecipValues = new Dictionary<CubeCoordinates, float>();
-            var worldList = WorldData.WorldDict.Values.ToList();
-            worldList.Sort((x, y) => x.Elevation.CompareTo(y.Elevation));
-            foreach(WorldTile tile in worldList) {
-                riverPrecipValues[tile.Coordinates] = tile.Precipitation + (tile.Precipitation < 100 ? tile.Humidity : 0);
+            var sWorld = WorldData.WorldDict.ToList();
+            sWorld.Sort((x, y) => y.Value.Elevation.CompareTo(x.Value.Elevation));
+
+            List<Particle> particles = new List<Particle>();
+            for(int i = 0; i < args.RiverCutoff * sWorld.Count; i++) {
+                particles.Add(new Particle {
+                    pos = sWorld[i].Key,
+                    path = new Dictionary<CubeCoordinates, float>(),
+                    water = 0f
+                }) ;
             }
-            var riverPasses = 2;
-            for(int i = 0; i < 5; i++) {
-                foreach (WorldTile tile in worldList) {
-                    if(!tile.IsUnderwater) {
-                        var downhill = ValidInMap(tile.Coordinates.GetNeighbor(HexDirection.N)) ? HexDirection.N : HexDirection.S;
-                        for (HexDirection d = HexDirection.NE; d <= HexDirection.NW; d++) {
-                            if (ValidInMap(tile.Coordinates.GetNeighbor(d))) {
-                                if (WorldData.WorldDict[tile.Coordinates.GetNeighbor(downhill)].Elevation > WorldData.WorldDict[tile.Coordinates.GetNeighbor(d)].Elevation) {
-                                    downhill = d;
-                                }
-                                else if (WorldData.WorldDict[tile.Coordinates.GetNeighbor(downhill)].Elevation == WorldData.WorldDict[tile.Coordinates.GetNeighbor(d)].Elevation) {
-                                    downhill =
-                                        riverPrecipValues[tile.Coordinates.GetNeighbor(downhill)] < riverPrecipValues[tile.Coordinates.GetNeighbor(d)]
-                                        ? d : downhill;
-                                }
+
+            foreach(Particle p in particles) {
+                while (WorldData.WorldDict[p.pos].Elevation >= 0) {
+                    p.water += WorldData.WorldDict[p.pos].Precipitation;
+                    p.path[p.pos] = p.water;
+                    var el = p.pos;
+                    for (HexDirection d = HexDirection.N; d <= HexDirection.NE; d++) {
+                        if(!p.path.TryGetValue(p.pos.GetNeighbor(d), out float _) && ValidInMap(p.pos.GetNeighbor(d))) {
+                            if(WorldData.WorldDict[el].Elevation > WorldData.WorldDict[p.pos.GetNeighbor(d)].Elevation) {
+                                el = p.pos.GetNeighbor(d);
+                            } else if (WorldData.WorldDict[el].Elevation == WorldData.WorldDict[p.pos.GetNeighbor(d)].Elevation) {
+                                el = WorldData.WorldDict[el].Precipitation > WorldData.WorldDict[p.pos.GetNeighbor(d)].Precipitation ? el : p.pos.GetNeighbor(d);
+                                if (el.Equals(p.pos)) el = p.pos.GetNeighbor(d);
                             }
                         }
-                        riverPrecipValues[tile.Coordinates.GetNeighbor(downhill)] += riverPrecipValues[tile.Coordinates];
-                        riverPrecipValues[tile.Coordinates] = 0;
                     }
+                    if (el.Equals(p.pos)) break;
+                    p.pos = el;
                 }
             }
 
-            var riverValues = new Dictionary<CubeCoordinates, int>();
-            foreach(CubeCoordinates tile in riverPrecipValues.Keys) {
-                riverValues[tile] = (int)(riverPrecipValues[tile] / 100F);
-            }
-            
-            foreach(CubeCoordinates tile in WorldData.WorldDict.Keys) {
-                if(!WorldData.WorldDict[tile].IsUnderwater) {
-                    if (riverValues[tile] > 0) {
-                        WorldData.WorldDict[tile].River = new River(riverValues[tile]);
-                    }
-                }   
+            foreach(Particle p in particles) {
+                foreach(CubeCoordinates tile in p.path.Keys) {
+                    WorldData.WorldDict[tile].River = new River((int)p.path[tile]);
+                }
             }
 
+        }
+
+        class Particle {
+            public CubeCoordinates pos;
+            public Dictionary<CubeCoordinates, float> path;
+            public float water;
         }
 
         private bool ValidInMap(CubeCoordinates c) {

@@ -450,13 +450,14 @@ MonoBehaviour:
     SizeChunksX: 80
     SizeChunksZ: 40
     OceanFrequency: 0.6
-    NumPlates: 27
+    NumPlates: 33
     PlateSpreadDecay: 0.9997
     PlateMotionScaleFactor: 0.3
     UpliftDecay: 0.885
     TemperatureDecay: 0.9925
     TemperatureDecayElevation: 0.91
     WeatherPasses: 200
+    RiverCutoff: 0.005
 --- !u!114 &1160655035
 MonoBehaviour:
   m_ObjectHideFlags: 0
