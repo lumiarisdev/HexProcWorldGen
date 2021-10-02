@@ -269,15 +269,27 @@ public class HexMap : MonoBehaviour {
         cell.transform.localPosition = pos;
         cell.coordinates = wTile.Coordinates;
 
+        // rivers
+        // for flow: in is true, out is false
+        cell.rivers = new Dictionary<HexDirection, bool>();
+        if(wTile.River != null) {
+            if(wTile.River.size > 10) {
+                cell.rivers = wTile.River.flow;
+            }
+        }
+
         // initial coloring, based on debug modes and worldtile attributes
         if (debugMode == DebugMode.None) {
             // normal terrain
             cell.color = colors[(int)wTile.Terrain];
 
             // rivers
-            if(wTile.River != null) {
-                cell.color = Color.blue;
-            }
+            //if (wTile.River != null) {
+            //    if(wTile.River.size > 10) {
+            //        var t = Mathf.InverseLerp(0, 50, wTile.River.size);
+            //        //cell.color = Color.Lerp(Color.white, Color.blue, t);
+            //    }
+            //}
 
         }
         else if(debugMode == DebugMode.Wind) {

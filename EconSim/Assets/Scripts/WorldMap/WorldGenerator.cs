@@ -819,40 +819,85 @@ namespace EconSim
             sWorld.Sort((x, y) => y.Value.Elevation.CompareTo(x.Value.Elevation));
 
             List<Particle> particles = new List<Particle>();
-            for(int i = 0; i < args.RiverCutoff * sWorld.Count; i++) {
-                particles.Add(new Particle {
-                    pos = sWorld[i].Key,
-                    path = new Dictionary<CubeCoordinates, float>(),
-                    water = 0f
-                }) ;
+            foreach(KeyValuePair<CubeCoordinates, WorldTile> kv in sWorld) {
+                if(kv.Value.Precipitation > 0 && kv.Value.Elevation > -1) {
+                    particles.Add(new Particle {
+                        pos = kv.Key,
+                        path = new Dictionary<CubeCoordinates, float>(),
+                        water = 0f
+                    });
+                }
             }
 
-            foreach(Particle p in particles) {
+            Dictionary<CubeCoordinates, float> erosionMap = new Dictionary<CubeCoordinates, float>();
+            foreach(WorldTile tile in WorldData.WorldDict.Values) {
+                erosionMap[tile.Coordinates] = tile.Elevation;
+            }
+
+            foreach (Particle p in particles) {
                 while (WorldData.WorldDict[p.pos].Elevation >= 0) {
                     p.water += WorldData.WorldDict[p.pos].Precipitation;
                     p.path[p.pos] = p.water;
                     var el = p.pos;
                     for (HexDirection d = HexDirection.N; d <= HexDirection.NE; d++) {
-                        if(!p.path.TryGetValue(p.pos.GetNeighbor(d), out float _) && ValidInMap(p.pos.GetNeighbor(d))) {
-                            if(WorldData.WorldDict[el].Elevation > WorldData.WorldDict[p.pos.GetNeighbor(d)].Elevation) {
+                        if (!p.path.TryGetValue(p.pos.GetNeighbor(d), out float _) && ValidInMap(p.pos.GetNeighbor(d))) {
+                            if (erosionMap[el] > erosionMap[p.pos.GetNeighbor(d)]) {
                                 el = p.pos.GetNeighbor(d);
-                            } else if (WorldData.WorldDict[el].Elevation == WorldData.WorldDict[p.pos.GetNeighbor(d)].Elevation) {
+                            }
+                            else if (erosionMap[el] == erosionMap[p.pos.GetNeighbor(d)]) {
                                 el = WorldData.WorldDict[el].Precipitation > WorldData.WorldDict[p.pos.GetNeighbor(d)].Precipitation ? el : p.pos.GetNeighbor(d);
                                 if (el.Equals(p.pos)) el = p.pos.GetNeighbor(d);
                             }
                         }
                     }
                     if (el.Equals(p.pos)) break;
+                    erosionMap[p.pos] -= 0.1f;
                     p.pos = el;
                 }
             }
 
-            foreach(Particle p in particles) {
-                foreach(CubeCoordinates tile in p.path.Keys) {
-                    WorldData.WorldDict[tile].River = new River((int)p.path[tile]);
+            foreach (Particle p in particles) {
+                var riverList = p.path.Keys.ToList();
+                for(int i = 0; i < riverList.Count; i++) {
+                    if(WorldData.WorldDict[riverList[i]].River == null) {
+                        WorldData.WorldDict[riverList[i]].River = new River(1);
+                    } else {
+                        WorldData.WorldDict[riverList[i]].River.size++;
+                    }
+                    if(i - 1 > 0) {
+                        for(HexDirection d = HexDirection.N; d <= HexDirection.NW; d++) {
+                            if (riverList[i].GetNeighbor(d).Equals(riverList[i - 1])
+                                && !WorldData.WorldDict[riverList[i]].River.flow.TryGetValue(d, out bool _)
+                                && WorldData.WorldDict[riverList[i]].River.flow.Count < 2)
+                                WorldData.WorldDict[riverList[i]].River.flow[d] = true;
+                        }
+                    }
+                    if(i + 1 < riverList.Count) {
+                        for(HexDirection d = HexDirection.N; d <= HexDirection.NW; d++) {
+                            if (riverList[i].GetNeighbor(d).Equals(riverList[i + 1])
+                                && !WorldData.WorldDict[riverList[i]].River.flow.TryGetValue(d, out bool _)
+                                && WorldData.WorldDict[riverList[i]].River.flow.Count < 2)
+                                WorldData.WorldDict[riverList[i]].River.flow[d] = false;
+                        }
+                    }
                 }
             }
 
+            // apply erosion
+            // this is doing a full elevation smoothing again...
+            // not really good
+            foreach (CubeCoordinates t in erosionMap.Keys) {
+                if(WorldData.WorldDict[t].River != null) {
+                    var smoothedE = erosionMap[t];
+                    int smoothing = 1;
+                    for (HexDirection d = HexDirection.N; d <= HexDirection.NW; d++) {
+                        smoothedE += ValidInMap(t.GetNeighbor(d)) ? erosionMap[t.GetNeighbor(d)] : 0;
+                        smoothing += ValidInMap(t.GetNeighbor(d)) ? 1 : 0;
+                    }
+                    smoothedE /= smoothing;
+                    WorldData.WorldDict[t].Elevation = Mathf.RoundToInt(smoothedE);
+                }
+            }
         }
 
         class Particle {

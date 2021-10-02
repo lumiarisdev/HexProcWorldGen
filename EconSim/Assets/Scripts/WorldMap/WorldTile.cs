@@ -33,15 +33,19 @@ namespace EconSim {
 
     public class River {
         public int size;
-        public Tuple<HexDirection, HexDirection> flow;
+        // in is true, out is false
+        public Dictionary<HexDirection, bool> flow;
         public River(int s) {
             size = s;
+            flow = new Dictionary<HexDirection, bool>();
         }
-        public River(int s, HexDirection i, HexDirection o) {
+        public River(int s, HexDirection i, HexDirection o, bool iF, bool oF) {
             size = s;
-            flow = new Tuple<HexDirection, HexDirection>(i, o);
+            flow = new Dictionary<HexDirection, bool>();
+            flow[i] = iF;
+            flow[o] = oF;
         }
-        public River(int s, Tuple<HexDirection, HexDirection> f) {
+        public River(int s, Dictionary<HexDirection, bool> f) {
             size = s;
             flow = f;
         }

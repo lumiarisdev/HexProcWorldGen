@@ -16,7 +16,7 @@ public class HexMeshCell : MonoBehaviour
 
     public float waterLevel;
     // true is in, out is false
-    Dictionary<HexDirection, bool> rivers;
+    public Dictionary<HexDirection, bool> rivers;
 
     public bool HasIncomingRiver {
         get {
@@ -36,6 +36,10 @@ public class HexMeshCell : MonoBehaviour
         }
     }
 
+    public bool HasRiverThroughEdge(HexDirection d) {
+        return rivers.TryGetValue(d, out bool _);
+    }
+
     public bool IsUnderwater {
         get {
             return waterLevel > Mathf.RoundToInt(transform.localPosition.y / HexMetrics.elevationStep);
@@ -45,6 +49,18 @@ public class HexMeshCell : MonoBehaviour
     public float WaterSurfaceY {
         get {
             return (waterLevel + (HexMetrics.waterElevationOffset * HexMetrics.elevationStep));
+        }
+    }
+
+    public float StreamBedY {
+        get {
+            return transform.localPosition.y + (HexMetrics.streamBedElevationOffset * HexMetrics.elevationStep);
+        }
+    }
+
+    public float RiverSurfaceY {
+        get {
+            return (transform.localPosition.y + HexMetrics.riverSurfaceElevationOffset);
         }
     }
 

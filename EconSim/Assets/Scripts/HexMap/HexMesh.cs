@@ -119,6 +119,10 @@ public class HexMesh : MonoBehaviour
         triangles.Add(vertexIndex + 3);
     }
 
+    public void AddQuadColor(Color c) {
+        AddQuadColor(c, c);
+    }
+
     public void AddQuadColor(Color c1, Color c2) {
         AddQuadColor(c1, c1, c2, c2);
     }

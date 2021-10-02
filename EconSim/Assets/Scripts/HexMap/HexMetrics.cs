@@ -33,6 +33,9 @@ public static class HexMetrics {
 
     public const float waterElevationOffset = -0.5f;
 
+    public const float streamBedElevationOffset = -1f;
+    public const float riverSurfaceElevationOffset = -0.4f;
+
     /*
      * Returns a 4D vector containing 4 noise samples in correspondance with a world position
      */
@@ -82,7 +85,7 @@ public static class HexMetrics {
     /*
      * See notes above GetCorner(Vector3, int)
      */
-    private static Vector3 GetCorner(Vector3 origin, int index, float distance) {
+    public static Vector3 GetCorner(Vector3 origin, int index, float distance) {
         index += 4;
         while(index > 5) {
             index -= 6;
