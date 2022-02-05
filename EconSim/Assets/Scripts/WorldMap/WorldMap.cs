@@ -9,7 +9,7 @@ namespace EconSim {
 
         public static WorldMap Instance;
 
-        public HexMap hexMap;
+        private HexMap hexMap;
 
         public WorldGenerator Gen;
         public WorldArgs generatorArgs;

@@ -27,12 +27,6 @@ namespace EconSim
 
         }
 
-        public static WorldMapData GenerateWorld(WorldArgs _args) {
-            var gen = new WorldGenerator(_args);
-            gen.GenerateWorld();
-            return gen.WorldData;
-        }
-
         public IEnumerator GenerateWorld() {
 
             // apply seed

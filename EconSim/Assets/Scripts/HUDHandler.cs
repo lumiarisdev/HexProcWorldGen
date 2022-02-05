@@ -46,7 +46,7 @@ public class HUDHandler : MonoBehaviour {
             var b = int.TryParse(seedInput.value, out int r);
             wMap.generatorArgs.WorldSeed = b ? r : Random.Range(0, int.MaxValue);
             wMap.generatorArgs.RandomizeSeed = false;
-            wMap.Gen = new EconSim.WorldGenerator(wMap.generatorArgs);
+            // wMap.Gen = new EconSim.WorldGenerator(wMap.generatorArgs); not needed as worldmap.cs
         }
         StartCoroutine(wMap.Gen.GenerateWorld());
 
