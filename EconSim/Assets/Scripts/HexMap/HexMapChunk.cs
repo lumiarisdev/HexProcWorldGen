@@ -8,7 +8,7 @@ public class HexMapChunk : MonoBehaviour
 {
     public Text cellLabelPrefab;
     Canvas canvas;
-    public HexMesh terrainMesh, waterMesh;
+    public HexMesh terrainMesh, waterMesh, shoreMesh, riverMesh;
     Dictionary<CubeCoordinates, HexMeshCell> cells;
 
     public Color color;
@@ -70,6 +70,8 @@ public class HexMapChunk : MonoBehaviour
         terrainMesh.Clear();
         if(drawWater) {
             waterMesh.Clear();
+            shoreMesh.Clear();
+            riverMesh.Clear();
         }
         foreach (HexMeshCell cell in cells.Values) {
             Triangulate(cell);
@@ -77,12 +79,8 @@ public class HexMapChunk : MonoBehaviour
         terrainMesh.Apply();
         if(drawWater) {
             waterMesh.Apply();
-        }
-    }
-
-    private void Triangulate(HexMeshCell cell) {
-        for (HexDirection d = HexDirection.N; d <= HexDirection.NW; d++) {
-            Triangulate(d, cell);
+            shoreMesh.Apply();
+            riverMesh.Apply();
         }
     }
 
@@ -91,6 +89,15 @@ public class HexMapChunk : MonoBehaviour
      * NOTE:
      * Each cell is composed of an inner hexagon, and a ring of quads/triangles that make up the outer hexagon,
      * as well as connect the cell to its neighbors.
+     */
+    private void Triangulate(HexMeshCell cell) {
+        for (HexDirection d = HexDirection.N; d <= HexDirection.NW; d++) {
+            Triangulate(d, cell);
+        }
+    }
+
+    /*
+     * Triangulates the main area of the hexagon and calls the remaining triangulate functions.
      */
     private void Triangulate(HexDirection dir, HexMeshCell cell) {
         Vector3 origin = cell.transform.localPosition; // could be cell.origin, refactor later ???
@@ -101,7 +108,21 @@ public class HexMapChunk : MonoBehaviour
             HexMetrics.GetInnerCorner(origin, (int)dir + 1)
             );
 
-        TriangulateEdgeFan(origin, e, cell.color);
+        // triangulate a river, otherwise go ahead with the normal edges
+        if(cell.rivers.Count > 0) {
+            if (cell.HasRiverThroughEdge(dir)) {
+                e.v3.y = cell.StreamBedY;
+                if(cell.rivers.Count == 1) { // this means there is only one river entry, which means it must end of begin on this tile
+                    TriangulateWithRiverBeginOrEnd(dir, cell, origin, e);
+                } else {
+                    TriangulateWithRiver(dir, cell, origin, e);
+                }
+            } else {
+                TriangulateAdjacentToRiver(dir, cell, origin, e);
+            }
+        } else {
+            TriangulateEdgeFan(origin, e, cell.color);
+        }
 
         // connection/bridge (this is a quad and multiple triangles that make up the outer hexagon ring)
         if (dir <= HexDirection.SE) {
@@ -114,6 +135,101 @@ public class HexMapChunk : MonoBehaviour
             }
         }
 
+    }
+
+    /*
+     * Triangulates tiles when there is a river present
+     */
+    private void TriangulateWithRiver(HexDirection dir, HexMeshCell cell, Vector3 origin, EdgeVertices e) {
+        var dist = HexMetrics.outerRadius * HexMetrics.solidFactor * 0.25f;
+        var dist2 = HexMetrics.innerRadius * HexMetrics.solidFactor * 0.25f;
+        var innerToOuter = 1f / 0.866025404f;
+        Vector3 originL, originR;
+        if (cell.HasRiverThroughEdge(dir.Opposite())) {
+            originL = HexMetrics.GetCorner(origin, (int)dir - 1, dist);
+            originR = HexMetrics.GetCorner(origin, (int)dir + 2, dist);
+        }
+        else if (cell.HasRiverThroughEdge(dir.Next())) {
+            originL = origin;
+            originR = Vector3.Lerp(origin, e.v5, 2f / 3f);
+        }
+        else if (cell.HasRiverThroughEdge(dir.Previous())) {
+            originL = Vector3.Lerp(origin, e.v1, 2f / 3f);
+            originR = origin;
+        }
+        else if (cell.HasRiverThroughEdge(dir.Next().Next())) {
+            originL = origin;
+            originR = (HexMetrics.GetCorner(origin, (int)dir + 1, dist) + HexMetrics.GetCorner(origin, (int)dir + 2, dist)) * (0.5f);
+        }
+        else {
+            originL = (HexMetrics.GetCorner(origin, (int)dir - 1, dist) + HexMetrics.GetCorner(origin, (int)dir, dist)) * (0.5f);
+            originR = origin;
+        }
+        origin = Vector3.Lerp(originL, originR, 0.5f);
+        EdgeVertices m = new EdgeVertices(
+            Vector3.Lerp(originL, e.v1, 0.5f),
+            Vector3.Lerp(originR, e.v5, 0.5f),
+            1f / 6f);
+        m.v3.y = origin.y = e.v3.y;
+
+        TriangulateEdgeStrip(m, cell.color, e, cell.color);
+        terrainMesh.AddTrianglePerturbed(originL, m.v1, m.v2);
+        terrainMesh.AddTriangleColor(cell.color);
+        terrainMesh.AddQuadPerturbed(originL, origin, m.v2, m.v3);
+        terrainMesh.AddQuadColor(cell.color);
+        terrainMesh.AddQuadPerturbed(origin, originR, m.v3, m.v4);
+        terrainMesh.AddQuadColor(cell.color);
+        terrainMesh.AddTrianglePerturbed(originR, m.v4, m.v5);
+        terrainMesh.AddTriangleColor(cell.color);
+
+        TriangulateRiverQuad(originL, originR, m.v2, m.v4, cell.RiverSurfaceY, 0.4f, cell.rivers[dir]);
+        TriangulateRiverQuad(m.v2, m.v4, e.v2, e.v4, cell.RiverSurfaceY, 0.6f, cell.rivers[dir]);
+    }
+
+    /*
+     * Triangulates a tile with a river that begins or ends in the tile
+     * I would like to change this to represent a small lake or at least a small pool on the tile
+     */
+    private void TriangulateWithRiverBeginOrEnd(HexDirection dir, HexMeshCell cell, Vector3 origin, EdgeVertices e) {
+        EdgeVertices m = new EdgeVertices(
+            Vector3.Lerp(origin, e.v1, 0.5f),
+            Vector3.Lerp(origin, e.v5, 0.5f));
+        m.v3.y = e.v3.y; // set height to bed height
+
+        TriangulateEdgeStrip(m, cell.color, e, cell.color);
+        TriangulateEdgeFan(origin, m, cell.color);
+
+        TriangulateRiverQuad(m.v2, m.v4, e.v2, e.v4, cell.RiverSurfaceY, 0.6f, cell.rivers[dir]);
+        origin.y = m.v2.y = m.v4.y = cell.RiverSurfaceY;
+        riverMesh.AddTriangle(origin, m.v2, m.v4);
+        if(cell.rivers[dir]) {
+            riverMesh.AddTriangleUV(new Vector2(0.5f, 0.4f), new Vector2(1f, 0.2f), new Vector2(0f, 0.2f));
+        } else {
+            riverMesh.AddTriangleUV(new Vector2(0.5f, 0.4f), new Vector2(0f, 0.6f), new Vector2(1f, 0.6f));
+        }
+    }
+
+    /*
+     * Triangulate the area of a cell next to a river
+     */
+    private void TriangulateAdjacentToRiver(HexDirection dir, HexMeshCell cell, Vector3 origin, EdgeVertices e) {
+        var dist = HexMetrics.outerRadius * HexMetrics.solidFactor * 0.25f;
+        if(cell.HasRiverThroughEdge(dir.Next())) {
+            if(cell.HasRiverThroughEdge(dir.Previous())) {
+                origin = (HexMetrics.GetCorner(origin, (int)dir, dist) + HexMetrics.GetCorner(origin, (int)dir + 1, dist)) * (0.5f);
+            }
+            else if (cell.HasRiverThroughEdge(dir.Previous().Previous())) {
+                origin = HexMetrics.GetCorner(origin, (int)dir, dist);
+            }
+        } else if(cell.HasRiverThroughEdge(dir.Previous()) && cell.HasRiverThroughEdge(dir.Next().Next())) {
+            origin = HexMetrics.GetCorner(origin, (int)dir + 1, dist);
+        }
+        
+        EdgeVertices m = new EdgeVertices(
+            Vector3.Lerp(origin, e.v1, 0.5f),
+            Vector3.Lerp(origin, e.v5, 0.5f));
+        TriangulateEdgeStrip(m, cell.color, e, cell.color);
+        TriangulateEdgeFan(origin, m, cell.color);
     }
 
     /*
@@ -132,9 +248,15 @@ public class HexMapChunk : MonoBehaviour
         bridgeOffset.y = neighbor.transform.localPosition.y - cell.transform.localPosition.y;
         EdgeVertices e2 = new EdgeVertices(
             e1.v1 + bridgeOffset,
-            e1.v4 + bridgeOffset
+            e1.v5 + bridgeOffset
             );
         //v3.y = v4.y = neighbor.transform.localPosition.y; // override height of far end of bridge to match neighbor
+
+        // river height for neighbor
+        if(cell.HasRiverThroughEdge(dir)) {
+            e2.v3.y = neighbor.StreamBedY;
+            TriangulateRiverQuad(e1.v2, e1.v4, e2.v2, e2.v4, cell.RiverSurfaceY, neighbor.RiverSurfaceY, 0.8f, cell.rivers[dir]);
+        }
 
         // only draw terraces on connections if it is a slope
         if (cell.GetEdgeType(dir) == HexEdgeType.Slope) {
@@ -147,7 +269,7 @@ public class HexMapChunk : MonoBehaviour
         // create next neighbor triangle and blend colors
         HexMeshCell nextNeighbor = HexMap.MeshCellLookup(cell.coordinates.GetNeighbor(dir.Next()));
         if (dir <= HexDirection.NE && nextNeighbor != null) {
-            Vector3 v5 = e1.v4 + HexMetrics.GetBridgeOffset(origin, dir.Next());
+            Vector3 v5 = e1.v5 + HexMetrics.GetBridgeOffset(origin, dir.Next());
             v5.y = nextNeighbor.transform.localPosition.y; // override height to match nextNeighbor
 
             // determine lowest cell
@@ -157,17 +279,17 @@ public class HexMapChunk : MonoBehaviour
             // the lowest cell is used to determine the draw order of the vertices
             if (cellStep <= neighborStep) {
                 if (cellStep <= nextNeighborStep) {
-                    TriangulateCorner(e1.v4, cell, e2.v4, neighbor, v5, nextNeighbor);
+                    TriangulateCorner(e1.v5, cell, e2.v5, neighbor, v5, nextNeighbor);
                 }
                 else {
-                    TriangulateCorner(v5, nextNeighbor, e1.v4, cell, e2.v4, neighbor);
+                    TriangulateCorner(v5, nextNeighbor, e1.v5, cell, e2.v5, neighbor);
                 }
             }
             else if (neighborStep <= nextNeighborStep) {
-                TriangulateCorner(e2.v4, neighbor, v5, nextNeighbor, e1.v4, cell);
+                TriangulateCorner(e2.v5, neighbor, v5, nextNeighbor, e1.v5, cell);
             }
             else {
-                TriangulateCorner(v5, nextNeighbor, e1.v4, cell, e2.v4, neighbor);
+                TriangulateCorner(v5, nextNeighbor, e1.v5, cell, e2.v5, neighbor);
             }
         }
     }
@@ -356,6 +478,8 @@ public class HexMapChunk : MonoBehaviour
         terrainMesh.AddTriangleColor(color);
         terrainMesh.AddTrianglePerturbed(origin, edge.v3, edge.v4);
         terrainMesh.AddTriangleColor(color);
+        terrainMesh.AddTrianglePerturbed(origin, edge.v4, edge.v5);
+        terrainMesh.AddTriangleColor(color);
     }
 
     /*
@@ -368,6 +492,8 @@ public class HexMapChunk : MonoBehaviour
         terrainMesh.AddQuadColor(c1, c2);
         terrainMesh.AddQuadPerturbed(e1.v3, e1.v4, e2.v3, e2.v4);
         terrainMesh.AddQuadColor(c1, c2);
+        terrainMesh.AddQuadPerturbed(e1.v4, e1.v5, e2.v4, e2.v5);
+        terrainMesh.AddQuadColor(c1, c2);
     }
 
     /*
@@ -376,16 +502,25 @@ public class HexMapChunk : MonoBehaviour
      */
     private void TriangulateWater(HexDirection dir, HexMeshCell cell, Vector3 origin) {
         origin.y = cell.WaterSurfaceY;
+
+        HexMeshCell neighbor = HexMap.MeshCellLookup(cell.coordinates.GetNeighbor(dir));
+        if(neighbor != null && !neighbor.IsUnderwater) {
+            TriangulateWaterShore(dir, cell, neighbor, origin);
+        } else {
+            TriangulateOpenWater(dir, cell, neighbor, origin);
+        }
+    }
+
+    /*
+     * Triangulate the open water area
+     */
+    private void TriangulateOpenWater(HexDirection dir, HexMeshCell cell, HexMeshCell neighbor, Vector3 origin) {
         Vector3 c1 = HexMetrics.GetInnerCorner(origin, (int)dir);
         Vector3 c2 = HexMetrics.GetInnerCorner(origin, (int)dir + 1);
 
         waterMesh.AddTrianglePerturbed(origin, c1, c2);
 
-        if(dir <= HexDirection.SE) {
-            HexMeshCell neighbor = HexMap.MeshCellLookup(cell.coordinates.GetNeighbor(dir));
-            if (neighbor == null || !neighbor.IsUnderwater) {
-                return;
-            }
+        if (dir <= HexDirection.SE && neighbor != null) {
 
             Vector3 bridgeOffset = HexMetrics.GetBridgeOffset(origin, dir);
             Vector3 e1 = c1 + bridgeOffset;
@@ -393,13 +528,63 @@ public class HexMapChunk : MonoBehaviour
 
             waterMesh.AddQuadPerturbed(c1, c2, e1, e2);
 
-            if(dir <= HexDirection.S) {
+            if (dir < HexDirection.SE) {
                 HexMeshCell nextNeighbor = HexMap.MeshCellLookup(cell.coordinates.GetNeighbor(dir.Next()));
-                if(nextNeighbor == null || !nextNeighbor.IsUnderwater) {
+                if (nextNeighbor == null || !nextNeighbor.IsUnderwater) {
                     return;
                 }
-                waterMesh.AddTrianglePerturbed(c2, e2, c2 + HexMetrics.GetBridgeOffset(origin, dir));
+                waterMesh.AddTrianglePerturbed(c2, e2, c2 + HexMetrics.GetBridgeOffset(origin, dir.Next()));
             }
+        }
+    }
+
+    /*
+     * Triangulate the water by the shoreline
+     */
+    private void TriangulateWaterShore(HexDirection dir, HexMeshCell cell, HexMeshCell neighbor, Vector3 origin) {
+        // triangle fan for triangles bordering land
+        EdgeVertices e1 = new EdgeVertices(
+            HexMetrics.GetInnerCorner(origin, (int)dir),
+            HexMetrics.GetInnerCorner(origin, (int)dir + 1));
+        waterMesh.AddTrianglePerturbed(origin, e1.v1, e1.v2);
+        waterMesh.AddTrianglePerturbed(origin, e1.v2, e1.v3);
+        waterMesh.AddTrianglePerturbed(origin, e1.v3, e1.v4);
+        waterMesh.AddTrianglePerturbed(origin, e1.v4, e1.v5);
+
+        Vector3 bridgeOffset = HexMetrics.GetBridgeOffset(origin, dir);
+        EdgeVertices e2 = new EdgeVertices(e1.v1 + bridgeOffset, e1.v5 + bridgeOffset);
+        shoreMesh.AddQuadPerturbed(e1.v1, e1.v2, e2.v1, e2.v2);
+        shoreMesh.AddQuadPerturbed(e1.v2, e1.v3, e2.v2, e2.v3);
+        shoreMesh.AddQuadPerturbed(e1.v3, e1.v4, e2.v3, e2.v4);
+        shoreMesh.AddQuadPerturbed(e1.v4, e1.v5, e2.v4, e2.v5);
+        shoreMesh.AddQuadUV(0f, 0f, 0f, 1f);
+        shoreMesh.AddQuadUV(0f, 0f, 0f, 1f);
+        shoreMesh.AddQuadUV(0f, 0f, 0f, 1f);
+        shoreMesh.AddQuadUV(0f, 0f, 0f, 1f);
+
+        HexMeshCell nextNeighbor = HexMap.MeshCellLookup(cell.GetNeighbor(dir.Next()));
+        if(nextNeighbor != null) {
+            shoreMesh.AddTrianglePerturbed(e1.v5, e2.v5, e1.v5 + HexMetrics.GetBridgeOffset(origin, dir.Next()));
+            shoreMesh.AddTriangleUV(
+                new Vector2(0f, 0f),
+                new Vector2(0f, 1f),
+                new Vector2(0f, nextNeighbor.IsUnderwater ? 0f : 1f));
+        }
+
+    }
+
+    private void TriangulateRiverQuad(Vector3 v1, Vector3 v2, Vector3 v3, Vector3 v4, float y, float v, bool reversed) {
+        TriangulateRiverQuad(v1, v2, v3, v4, y, y, v, reversed);
+    }
+
+    private void TriangulateRiverQuad(Vector3 v1, Vector3 v2, Vector3 v3, Vector3 v4, float y1, float y2, float v, bool reversed) {
+        v1.y = v2.y = y1;
+        v3.y = v4.y = y2;
+        riverMesh.AddQuad(v1, v2, v3, v4);
+        if(reversed) {
+            riverMesh.AddQuadUV(1f, 0f, 0.8f - v, 0.6f - v);
+        } else {
+            riverMesh.AddQuadUV(0f, 1f, v, v + 0.2f);
         }
     }
 

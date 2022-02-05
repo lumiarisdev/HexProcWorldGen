@@ -20,7 +20,10 @@ public class CameraController : MonoBehaviour
 
     void Start() {
         instance = this;
-        newPosition = transform.position;
+        var v = new Vector3(EconSim.WorldMap.Instance.generatorArgs.SizeX / 2, transform.position.y, EconSim.WorldMap.Instance.generatorArgs.SizeZ / 2);
+        v.x = v.x * 2f * HexMetrics.outerRadius * 0.75f;
+        v.z = v.z * HexMetrics.outerRadius * Mathf.Sqrt(3);
+        newPosition = transform.position = v;
         newRotation = transform.rotation;
         cameraTransform = GetComponentInChildren<Camera>().transform;
         newZoom = cameraTransform.localPosition;

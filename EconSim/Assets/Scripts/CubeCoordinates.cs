@@ -41,6 +41,16 @@ namespace EconSim {
             new CubeCoordinates(-1, 0, 1)  // 1 move NW
         };
 
+        public static CubeCoordinates FromPosition(Vector3 pos) {
+            var x = pos.x / (HexMetrics.outerRadius * 2f * 0.75f);
+            var z = pos.z / (Mathf.Sqrt(3) * HexMetrics.outerRadius);
+            z += (x / 2);
+            z -= (x * 0.5f);
+            int iX = Mathf.RoundToInt(x);
+            int iZ = Mathf.RoundToInt(z);
+            return OffsetToCube(iX, iZ);
+        }
+
         // THERES A LOT OF TRUNCATING GOING ON HERE
         public static CubeCoordinates Lerp(CubeCoordinates a, CubeCoordinates b, float h) {
             a.x += (int)((b.x - a.x) * h);
@@ -110,6 +120,10 @@ namespace EconSim {
             return c.Validate();
         }
 
+        public static CubeCoordinates OffsetToCube(int x, int z) {
+            return OffsetToCube(new Vector3(x, 0, z));
+        }
+
         // NEEDS VERIFICATION THAT CONVERSION IS CORRECT
         // appears correct
         // NOTE - conversion from Odd-q offset coordinates to cube coordinates
@@ -122,12 +136,12 @@ namespace EconSim {
         }
 
         public static CubeCoordinates OffsetToCube(Vector3 coords) {
-            return OffsetToCube(new Vector3Int((int)coords.x, (int)coords.y, (int)coords.z));
+            return OffsetToCube(new Vector3Int(Mathf.RoundToInt(coords.x), Mathf.RoundToInt(coords.y), Mathf.RoundToInt(coords.z)));
         }
 
         public static Vector3Int CubeToOffset(CubeCoordinates coords) {
             var col = coords.x;
-            var row = coords.z + (coords.x + (coords.x & 1)) / 2;
+            var row = coords.z + (coords.x - (coords.x & 1)) / 2;
             return new Vector3Int(col, 0, row);
         }
 

@@ -15,16 +15,52 @@ public class HexMeshCell : MonoBehaviour
     public Color color;
 
     public float waterLevel;
+    // true is in, out is false
+    public Dictionary<HexDirection, bool> rivers;
+
+    public bool HasIncomingRiver {
+        get {
+            foreach(bool r in rivers.Values) {
+                if (r) return r;
+            }
+            return false;
+        }
+    }
+
+    public bool HasOutgoingRiver {
+        get {
+            foreach(bool r in rivers.Values) {
+                if (!r) return true;
+            }
+            return false;
+        }
+    }
+
+    public bool HasRiverThroughEdge(HexDirection d) {
+        return rivers.TryGetValue(d, out bool _);
+    }
 
     public bool IsUnderwater {
         get {
-            return waterLevel > transform.localPosition.y;
+            return waterLevel > Mathf.RoundToInt(transform.localPosition.y / HexMetrics.elevationStep);
         }
     }
 
     public float WaterSurfaceY {
         get {
             return (waterLevel + (HexMetrics.waterElevationOffset * HexMetrics.elevationStep));
+        }
+    }
+
+    public float StreamBedY {
+        get {
+            return transform.localPosition.y + (HexMetrics.streamBedElevationOffset * HexMetrics.elevationStep);
+        }
+    }
+
+    public float RiverSurfaceY {
+        get {
+            return (transform.localPosition.y + HexMetrics.riverSurfaceElevationOffset);
         }
     }
 
@@ -53,7 +89,7 @@ public class HexMeshCell : MonoBehaviour
     }
 
     // we need to call this to update the cells, at some point, lol
-    private void Refresh() {
+    public void Refresh() {
         if(chunk) {
             chunk.Refresh();
             for(int i = 0; i < 5; i++) {

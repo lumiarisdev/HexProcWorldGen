@@ -7,6 +7,12 @@ namespace EconSim
     public class WorldPlate
     {
 
+        public WorldPlate(CubeCoordinates origin) {
+            Origin = origin;
+            Tiles = new List<CubeCoordinates>();
+            BoundaryTiles = new List<CubeCoordinates>();
+        }
+
         public CubeCoordinates Origin;
 
         public List<CubeCoordinates> Tiles;
@@ -18,12 +24,12 @@ namespace EconSim
         public int Elevation;
         public int MinElevation {
             get {
-                return Oceanic ? -30 : 0;
+                return Oceanic ? -75 : 0;
             }
         }
         public int MaxElevation {
             get {
-                return 25;
+                return 80;
             }
         }
 
