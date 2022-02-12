@@ -1,9 +1,12 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UIElements;
 
 public class HUDHandler : MonoBehaviour {
+
+    public static HUDHandler Instance;
 
     private VisualElement seedDisplay;
     private VisualElement debugSelector;
@@ -36,6 +39,12 @@ public class HUDHandler : MonoBehaviour {
 
     }
 
+    public event EventHandler<HUDGenerateEventArgs> HUDGenerate;
+    public class HUDGenerateEventArgs : EventArgs {
+        public int seed;
+        public bool randomSeed;
+    }
+
     public void GenerateButtonPressed() {
 
         // display progress bar
@@ -44,12 +53,26 @@ public class HUDHandler : MonoBehaviour {
         // generate world using coroutine
         if(!seedInput.value.Equals("")) {
             var b = int.TryParse(seedInput.value, out int r);
-            wMap.generatorArgs.WorldSeed = b ? r : Random.Range(0, int.MaxValue);
-            wMap.generatorArgs.RandomizeSeed = false;
-            // wMap.Gen = new EconSim.WorldGenerator(wMap.generatorArgs); not needed as worldmap.cs
+            // wMap.generatorArgs.WorldSeed = b ? r : UnityEngine.Random.Range(0, int.MaxValue);
+            // wMap.generatorArgs.RandomizeSeed = false;
+            HUDGenerate?.Invoke(this, new HUDGenerateEventArgs {
+                seed = b ? r : UnityEngine.Random.Range(0, int.MaxValue),
+                randomSeed = false
+            });
+        } else {
+            HUDGenerate?.Invoke(this, new HUDGenerateEventArgs {
+                randomSeed = true
+            });
         }
-        StartCoroutine(wMap.Gen.GenerateWorld());
 
+    }
+
+    private void Awake() {
+        if(Instance == null) {
+            Instance = this;
+        } else {
+            Destroy(this);
+        }
     }
 
     private void Start() {
@@ -92,7 +115,7 @@ public class HUDHandler : MonoBehaviour {
 
     private void Update() {
         if (wMap.Gen.isDone && !mapLoaded) {
-            startPanel.RemoveFromHierarchy();
+            startPanel.style.display = DisplayStyle.None;
             seedDisplay.style.display = DisplayStyle.Flex;
             inspector.style.display = DisplayStyle.Flex;
             seed.text = "Seed: " + wMap.generatorArgs.WorldSeed.ToString();

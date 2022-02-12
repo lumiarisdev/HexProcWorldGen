@@ -123,6 +123,49 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
+--- !u!1 &223974226
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 223974227}
+  - component: {fileID: 223974228}
+  m_Layer: 0
+  m_Name: GameHandler
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &223974227
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 223974226}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 4
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &223974228
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 223974226}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 09576a0e97ec122ebaddbb8e1bd0ccd2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &243360149
 GameObject:
   m_ObjectHideFlags: 0
@@ -280,7 +323,7 @@ GameObject:
   - component: {fileID: 803415042}
   - component: {fileID: 803415044}
   m_Layer: 5
-  m_Name: UIDocument
+  m_Name: HUD
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -326,6 +369,78 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: deb733a46cab5834db1daa654526668d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!1 &957348094
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 957348096}
+  - component: {fileID: 957348095}
+  - component: {fileID: 957348097}
+  m_Layer: 0
+  m_Name: WorldMap
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &957348095
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 957348094}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c88d34ec6f60acd4094a86e673a0da3b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  generatorArgs:
+    WorldSeed: 1528972
+    StringSeed: 
+    UseStringSeed: 0
+    RandomizeSeed: 1
+    SizeChunksX: 80
+    SizeChunksZ: 40
+    OceanFrequency: 0.6
+    NumPlates: 33
+    PlateSpreadDecay: 0.9997
+    PlateMotionScaleFactor: 0.3
+    UpliftDecay: 0.885
+    TemperatureDecay: 0.9925
+    TemperatureDecayElevation: 0.91
+    WeatherPasses: 200
+    RiverCutoff: 0.005
+--- !u!4 &957348096
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 957348094}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 5
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &957348097
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 957348094}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4df1836cc6f8c284ea8333f861add589, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
 --- !u!1 &963194225
@@ -421,7 +536,6 @@ GameObject:
   m_Component:
   - component: {fileID: 1160655036}
   - component: {fileID: 1160655035}
-  - component: {fileID: 1160655034}
   m_Layer: 0
   m_Name: HexMap
   m_TagString: Untagged
@@ -429,35 +543,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &1160655034
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1160655033}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c88d34ec6f60acd4094a86e673a0da3b, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  hexMap: {fileID: 0}
-  generatorArgs:
-    WorldSeed: 1528972
-    StringSeed: 
-    UseStringSeed: 0
-    RandomizeSeed: 1
-    SizeChunksX: 80
-    SizeChunksZ: 40
-    OceanFrequency: 0.6
-    NumPlates: 33
-    PlateSpreadDecay: 0.9997
-    PlateMotionScaleFactor: 0.3
-    UpliftDecay: 0.885
-    TemperatureDecay: 0.9925
-    TemperatureDecayElevation: 0.91
-    WeatherPasses: 200
-    RiverCutoff: 0.005
 --- !u!114 &1160655035
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -475,7 +560,6 @@ MonoBehaviour:
   hexChunkPrefab: {fileID: 2579854813966232673, guid: c31485bdfd97a8a4dbbf12dff1434911, type: 3}
   hexMeshCellPrefab: {fileID: 1331116183330477846, guid: da05030600a77ad4697453022410e7e9, type: 3}
   cellLabelPrefab: {fileID: 5766728718376711944, guid: 3c7df4830ed111f43abee43d206cd82c, type: 3}
-  worldMap: {fileID: 0}
   noiseSource: {fileID: 2800000, guid: 60e6526e017a1a24596bc32f23d38f18, type: 3}
   mapExists: 0
 --- !u!4 &1160655036

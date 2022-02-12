@@ -58,7 +58,7 @@ public class HexMap : MonoBehaviour {
     List<HexMapChunk> chunks;
 
     static Dictionary<CubeCoordinates, HexMeshCell> hexMeshCells = new Dictionary<CubeCoordinates, HexMeshCell>();
-    public WorldMap worldMap;
+    WorldMap worldMap;
     static Dictionary<CubeCoordinates, LineRenderer> windVectors;
 
     public Texture2D noiseSource; // source for our vertex perturbation noise
@@ -88,20 +88,23 @@ public class HexMap : MonoBehaviour {
 
     private void Start() {
         worldMap = WorldMap.Instance;
+
+        // listen to WorldLoaded event to know when to load world
+        WorldMap.Instance.WorldLoaded += WorldLoadedListener;
+
     }
 
     // Update is called once per frame
     void Update()
     {
-        if(!mapExists) {
-            if (worldMap.Gen.isDone) {
-                worldMap.worldData = worldMap.Gen.WorldData; // this should really be changed
-                CreateChunks();
-                CreateCells(worldMap.worldData);
-                mapExists = true;
-                worldMap.Gen.isDone = false;
-            }
-        }
+
+    }
+
+    // this listens for  when the world data is loading or done generating
+    // and then draws the world
+    void WorldLoadedListener(object sender, EventArgs args) {
+        CreateChunks();
+        CreateCells(worldMap.worldData);
     }
 
     /*
