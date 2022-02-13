@@ -19,6 +19,17 @@ namespace EconSim
         public Dictionary<CubeCoordinates, float> RainfallDict;
 
         /*
+        * Data like date, time, and other temporal factors
+        */
+        public int ElapsedTime;
+        public DateTime StartTime;
+        public DateTime CurrentTime {
+            get {
+                return new DateTime();
+            }
+        }
+
+        /*
          * Default constructor, initialize data stores
          */
         public WorldMapData() {

@@ -13,7 +13,7 @@ namespace EconSim {
         public WorldArgs generatorArgs;
         //public bool DebugMode;
 
-        public WorldMapData worldData;
+        public WorldMapData worldMapData;
         
         public bool runSim;
         WorldStateMachine wsm;
@@ -25,15 +25,6 @@ namespace EconSim {
             } else {
                 Destroy(this);
             }
-
-            // since this is currently tied into the unity game loop
-            // we will need to alter the fixedupdate time so that
-            // the simulation runs as expected
-
-            // if it is parted out to an independent server, ideally not importing UnityEngine
-            // then it would not be necessary to alter the timestep and it could run independent
-            // of the server and allow for client interpolation/prediction
-            
 
             Gen = new WorldGenerator(generatorArgs);
 
@@ -69,7 +60,13 @@ namespace EconSim {
             ), new Func<WorldState>(() => {
 
                 // start world from freshly generated world
+
+                // bootstrap a freshly generated world
                 
+                // start the time after everything else is set to go,
+                // effectively dropping you into the simulation with the time running
+                WorldStart?.Invoke(this, EventArgs.Empty);
+
                 return WorldState.WorldActive;
             }));
 
@@ -78,6 +75,7 @@ namespace EconSim {
             ), new Func<WorldState>(() => {
 
                 // start world from loaded world
+                WorldStart?.Invoke(this, EventArgs.Empty);
 
                 return WorldState.WorldActive;
             }));
@@ -87,6 +85,9 @@ namespace EconSim {
             ), new Func<WorldState>(() => {
 
                 // pause an active world simulation
+
+                // invoke pause event
+                WorldPause?.Invoke(this, EventArgs.Empty);
 
                 return WorldState.WorldPaused;
             }));
@@ -114,7 +115,7 @@ namespace EconSim {
             ), new Func<WorldState>(() => {
 
                 // any necessary logic after generation  completes
-                worldData = Gen.WorldData;
+                worldMapData = Gen.WorldData;
                 Gen.GenerateComplete -= GenerateCompleteListener;
                 WorldLoaded?.Invoke(this, EventArgs.Empty);
 
@@ -127,6 +128,9 @@ namespace EconSim {
         }
 
         public event EventHandler WorldLoaded;
+        public event EventHandler WorldStart;
+        public event EventHandler WorldResume;
+        public event EventHandler WorldPause;
 
         void WorldLoadedListener(object sender, EventArgs args) {
             wsm.MoveNext(WorldCommand.Start);
@@ -147,8 +151,7 @@ namespace EconSim {
         void Start() {
         }
 
-        // most of the logic for this class should realistically be here
-        // with the correct Time.fixedDeltaTime value, this can be used as the primary simulation loop independent of visuals
+        // with the correct Time.fixedDeltaTime value, this can be used as the primary simulation tick independent of visuals
         private void FixedUpdate() {
             
             // use state machine to guide current logic
@@ -160,6 +163,7 @@ namespace EconSim {
                 case WorldState.WorldLoaded:
                 break;
                 case WorldState.WorldActive:
+
                 break;
                 case WorldState.WorldPaused:
                 break;

@@ -104,7 +104,7 @@ public class HexMap : MonoBehaviour {
     // and then draws the world
     void WorldLoadedListener(object sender, EventArgs args) {
         CreateChunks();
-        CreateCells(worldMap.worldData);
+        CreateCells(worldMap.worldMapData);
     }
 
     /*
@@ -122,12 +122,12 @@ public class HexMap : MonoBehaviour {
             }
             CreateChunks();
         }
-        foreach (WorldTile tile in worldMap.worldData.WorldDict.Values) {
+        foreach (WorldTile tile in worldMap.worldMapData.WorldDict.Values) {
             if (MeshCellLookup(tile.Coordinates) != null) {
-                UpdateCell(worldMap.worldData, tile);
+                UpdateCell(worldMap.worldMapData, tile);
             }
             else {
-                hexMeshCells[tile.Coordinates] = CreateCell(worldMap.worldData, tile);
+                hexMeshCells[tile.Coordinates] = CreateCell(worldMap.worldMapData, tile);
 
                 var x = tile.Coordinates.ToOffset().x;
                 var z = tile.Coordinates.ToOffset().z;
@@ -192,19 +192,19 @@ public class HexMap : MonoBehaviour {
         BFOUND:;
         }
         else if (debugMode == DebugMode.Temperature) {
-            if (worldMap.worldData.WorldDict[tile.Coordinates].Temperature == 30f) {
+            if (worldMap.worldMapData.WorldDict[tile.Coordinates].Temperature == 30f) {
                 hexMeshCells[tile.Coordinates].color = colors[7];
             }
             else {
-                hexMeshCells[tile.Coordinates].color = Color.Lerp(Color.blue, Color.red, (worldMap.worldData.WorldDict[tile.Coordinates].Temperature - -40f) / (30f - -40f));
+                hexMeshCells[tile.Coordinates].color = Color.Lerp(Color.blue, Color.red, (worldMap.worldMapData.WorldDict[tile.Coordinates].Temperature - -40f) / (30f - -40f));
             }
         }
         else if (debugMode == DebugMode.Humidity) {
-            var t = Mathf.InverseLerp(0f, 100f, worldMap.worldData.WorldDict[tile.Coordinates].Humidity);
+            var t = Mathf.InverseLerp(0f, 100f, worldMap.worldMapData.WorldDict[tile.Coordinates].Humidity);
             hexMeshCells[tile.Coordinates].color = Color.Lerp(Color.white, Color.blue, t);
         }
         else if (debugMode == DebugMode.Precipitation) {
-            var t = Mathf.InverseLerp(0f, WorldTile.MaxPrecipitation, worldMap.worldData.WorldDict[tile.Coordinates].Precipitation);
+            var t = Mathf.InverseLerp(0f, WorldTile.MaxPrecipitation, worldMap.worldMapData.WorldDict[tile.Coordinates].Precipitation);
             hexMeshCells[tile.Coordinates].color = Color.Lerp(Color.white, Color.blue, t);
         }
 
@@ -223,19 +223,19 @@ public class HexMap : MonoBehaviour {
 
         // wind debug
         if (debugMode == DebugMode.Wind) {
-            hexMeshCells[tile.Coordinates].label.text = worldMap.worldData.WorldDict[tile.Coordinates].Wind.Item1.ToString() + "\n" + worldMap.worldData.WorldDict[tile.Coordinates].Wind.Item2.ToString();
+            hexMeshCells[tile.Coordinates].label.text = worldMap.worldMapData.WorldDict[tile.Coordinates].Wind.Item1.ToString() + "\n" + worldMap.worldMapData.WorldDict[tile.Coordinates].Wind.Item2.ToString();
         }
         // temp debug
         else if (debugMode == DebugMode.Temperature) {
-            hexMeshCells[tile.Coordinates].label.text = Mathf.Round(worldMap.worldData.WorldDict[tile.Coordinates].Temperature) + " C";
+            hexMeshCells[tile.Coordinates].label.text = Mathf.Round(worldMap.worldMapData.WorldDict[tile.Coordinates].Temperature) + " C";
         }
         // humidity debug
         else if (debugMode == DebugMode.Humidity) {
-            hexMeshCells[tile.Coordinates].label.text = Mathf.RoundToInt(worldMap.worldData.WorldDict[tile.Coordinates].Humidity).ToString();
+            hexMeshCells[tile.Coordinates].label.text = Mathf.RoundToInt(worldMap.worldMapData.WorldDict[tile.Coordinates].Humidity).ToString();
         }
         // precipitation debug
         else if (debugMode == DebugMode.Precipitation) {
-            hexMeshCells[tile.Coordinates].label.text = Mathf.RoundToInt(worldMap.worldData.WorldDict[tile.Coordinates].Precipitation).ToString();
+            hexMeshCells[tile.Coordinates].label.text = Mathf.RoundToInt(worldMap.worldMapData.WorldDict[tile.Coordinates].Precipitation).ToString();
         }
 
         hexMeshCells[tile.Coordinates].Refresh();
