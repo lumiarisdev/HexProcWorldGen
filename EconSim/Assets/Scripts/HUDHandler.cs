@@ -1,9 +1,12 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UIElements;
 
 public class HUDHandler : MonoBehaviour {
+
+    public static HUDHandler Instance;
 
     private VisualElement seedDisplay;
     private VisualElement debugSelector;
@@ -36,6 +39,12 @@ public class HUDHandler : MonoBehaviour {
 
     }
 
+    public event EventHandler<HUDGenerateEventArgs> HUDGenerate;
+    public class HUDGenerateEventArgs : EventArgs {
+        public int seed;
+        public bool randomSeed;
+    }
+
     public void GenerateButtonPressed() {
 
         // display progress bar
@@ -44,12 +53,26 @@ public class HUDHandler : MonoBehaviour {
         // generate world using coroutine
         if(!seedInput.value.Equals("")) {
             var b = int.TryParse(seedInput.value, out int r);
-            wMap.generatorArgs.WorldSeed = b ? r : Random.Range(0, int.MaxValue);
-            wMap.generatorArgs.RandomizeSeed = false;
-            // wMap.Gen = new EconSim.WorldGenerator(wMap.generatorArgs); not needed as worldmap.cs
+            // wMap.generatorArgs.WorldSeed = b ? r : UnityEngine.Random.Range(0, int.MaxValue);
+            // wMap.generatorArgs.RandomizeSeed = false;
+            HUDGenerate?.Invoke(this, new HUDGenerateEventArgs {
+                seed = b ? r : UnityEngine.Random.Range(0, int.MaxValue),
+                randomSeed = false
+            });
+        } else {
+            HUDGenerate?.Invoke(this, new HUDGenerateEventArgs {
+                randomSeed = true
+            });
         }
-        StartCoroutine(wMap.Gen.GenerateWorld());
 
+    }
+
+    private void Awake() {
+        if(Instance == null) {
+            Instance = this;
+        } else {
+            Destroy(this);
+        }
     }
 
     private void Start() {
@@ -86,24 +109,22 @@ public class HUDHandler : MonoBehaviour {
 
         progressBar.SetEnabled(false);
 
+        // listen to generatecomplete event
+        wMap.Gen.GenerateComplete += GenerateCompleteListener;
+
     }
 
     private bool mapLoaded;
 
     private void Update() {
-        if (wMap.Gen.isDone && !mapLoaded) {
-            startPanel.RemoveFromHierarchy();
-            seedDisplay.style.display = DisplayStyle.Flex;
-            inspector.style.display = DisplayStyle.Flex;
-            seed.text = "Seed: " + wMap.generatorArgs.WorldSeed.ToString();
-            maxPrecip.text = EconSim.WorldTile.MaxPrecipitation.ToString();
-            mapLoaded = true;
-        }
         if (progressBar.enabledInHierarchy) {
             progressBar.value = wMap.Gen.progress;
         }
 
         if(mapLoaded) {
+            // remove listener since map is loaded
+            wMap.Gen.GenerateComplete -= GenerateCompleteListener;
+            // raycasting for inspector
             Ray inputRay = Camera.main.ScreenPointToRay(Input.mousePosition);
             RaycastHit hit;
             if(Physics.Raycast(inputRay, out hit)) {
@@ -111,17 +132,26 @@ public class HUDHandler : MonoBehaviour {
                 var pos = transform.InverseTransformPoint(hit.point);
                 var tile = EconSim.CubeCoordinates.FromPosition(pos);
                 coords.text = "Coordinates: " + tile.ToString();
-                terrain.text = "Terrain: " + wMap.worldData.WorldDict[tile].Terrain.ToString();
-                elevation.text = "Elevation: " + wMap.worldData.WorldDict[tile].Elevation.ToString();
-                temp.text = "Temperature: " + wMap.worldData.WorldDict[tile].Temperature.ToString();
-                humidity.text = "Absolute Humidity: " + wMap.worldData.WorldDict[tile].Humidity.ToString();
-                windDir.text = "Wind Direction: " + wMap.worldData.WorldDict[tile].Wind.Item1.ToString();
-                windMag.text = "Wind Speed: " + wMap.worldData.WorldDict[tile].Wind.Item2.ToString();
-                precip.text = "Precipitation: " + wMap.worldData.WorldDict[tile].Precipitation.ToString();
+                terrain.text = "Terrain: " + wMap.worldMapData.WorldDict[tile].Terrain.ToString();
+                elevation.text = "Elevation: " + wMap.worldMapData.WorldDict[tile].Elevation.ToString();
+                temp.text = "Temperature: " + wMap.worldMapData.WorldDict[tile].Temperature.ToString();
+                humidity.text = "Absolute Humidity: " + wMap.worldMapData.WorldDict[tile].Humidity.ToString();
+                windDir.text = "Wind Direction: " + wMap.worldMapData.WorldDict[tile].Wind.Item1.ToString();
+                windMag.text = "Wind Speed: " + wMap.worldMapData.WorldDict[tile].Wind.Item2.ToString();
+                precip.text = "Precipitation: " + wMap.worldMapData.WorldDict[tile].Precipitation.ToString();
 
             }
         }
 
+    }
+
+    public void GenerateCompleteListener(object sender, EventArgs args) {
+        startPanel.style.display = DisplayStyle.None;
+        seedDisplay.style.display = DisplayStyle.Flex;
+        inspector.style.display = DisplayStyle.Flex;
+        seed.text = "Seed: " + wMap.generatorArgs.WorldSeed.ToString();
+        maxPrecip.text = EconSim.WorldTile.MaxPrecipitation.ToString();
+        mapLoaded = true;
     }
 
 }
