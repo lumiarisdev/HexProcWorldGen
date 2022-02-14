@@ -32,6 +32,10 @@ A basic climate zone from a paired down selection of the Koppen climate classifi
 ## Rivers [WIP]
 Rivers are generated using the above maps and are drawn from high-elevation to low in areas with enough precipitation. Some erosion is applied based on the amount of precipitation. Currently this method of generation creates a number of small rivers in similar locations, and can sometimes create narrow values with the erosion. Most testing and adjustment needed.
 
+## Time flow post-generation [WIP]
+A basic timeflow is currently set up but is not displayed to the end user. Working on an adequate way to convert this "SimTime" to an appropriate C# DateTime object.
+See WorldTime.cs
+
 # Planned:
 
 Implement air pressure simulation to create more nuanced and realistic precipitation generation.
