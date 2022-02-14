@@ -6,6 +6,7 @@ The world generation code is located primarily in Assets/WorldMap/. Code for the
 HexProcWorldGen/Assets/WorldMap/WorldGenerator.cs contains the generator class and functions.
 
 Notes:
+!! Performance of certain functions in the generator is closely related to the map size set. Current default size is 80,000 tiles. Particularly the generator can spend a lot of time doing precipitation calculations. If the program hangs about 60-70% of the way to completion, allow it to continue generating. On an i7-6700k, the default world size takes just under 2 minutes. !!
 "EconSim" is an early prototype name and I use it for the namespace that contains the World-generation code.
 Generally speaking code that is related only to the visuals is not contained in this namespace.
 
