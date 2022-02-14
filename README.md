@@ -1,5 +1,5 @@
 # HexProcWorldGen
-A procedural world generator written in C#, visuals done with the Unity game engine.
+A procedural world generator written in C#, visuals done with the Unity game engine. WASD for camera movement.
 
 The world generation code is located primarily in Assets/WorldMap/. Code for the visuals is likewise primarily in Assets/HexMap/.
 
