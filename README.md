@@ -5,8 +5,11 @@ The world generation code is located primarily in Assets/WorldMap/. Code for the
 
 HexProcWorldGen/Assets/WorldMap/WorldGenerator.cs contains the generator class and functions.
 
-The project is WIP but currently the following generator features are implemented:
+Notes:
+"EconSim" is an early prototype name and I use it for the namespace that contains the World-generation code.
+Generally speaking code that is related only to the visuals is not contained in this namespace.
 
+The project is WIP but currently the following generator features are implemented:
 
 ## Plate tectonics
 Landmasses and bodies of water a created via simulated plate tectonics. A lazy flood-fill algorithm is used to assign each independent unit of map-space (a tile) to a "plate". Each plate is assigned a vector that represents its motions. These plates and their motion vectors are then used to calculate the world's heightmap in a way that produces geologically-believable results.
@@ -30,7 +33,3 @@ Rivers are generated using the above maps and are drawn from high-elevation to l
 
 Implement air pressure simulation to create more nuanced and realistic precipitation generation.
 Tweak river generation to allow for longer meandering river structures
-
-Notes:
-"EconSim" is an early prototype name and I use it for the namespace that contains the World-generation code.
-Generally speaking code that is related only to the visuals is not contained in this namespace.
